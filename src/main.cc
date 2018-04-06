@@ -68,15 +68,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
         glfwSetWindowShouldClose(window, GL_TRUE);
     else if (key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL &&
              action == GLFW_RELEASE) {
-        std::ofstream objfile("geometry.obj");
-        if (verts_ptr != nullptr && faces_ptr != nullptr) {
-            std::cout << "Dumping geometry into geometry.obj..." << std::flush;
-            objfile << Menger::objdump(*verts_ptr, *faces_ptr);
-            objfile.close();
-            std::cout << "Finished!" << std::endl;
-        } else {
-            std::cout << "Sorry, the geometry isn't ready yet." << std::endl;
-        }
     } else if (key == GLFW_KEY_W && action != GLFW_RELEASE) {
         g_camera.ws_walk_cam(1);
     } else if (key == GLFW_KEY_S && action != GLFW_RELEASE) {
@@ -86,13 +77,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
     } else if (key == GLFW_KEY_D && action != GLFW_RELEASE) {
         g_camera.ad_strafe_cam(1);
     } else if (key == GLFW_KEY_LEFT && action != GLFW_RELEASE) {
-        g_camera.lr_roll_cam(-1);
     } else if (key == GLFW_KEY_RIGHT && action != GLFW_RELEASE) {
-        g_camera.lr_roll_cam(1);
     } else if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE) {
-        g_camera.ud_move_cam(-1);
     } else if (key == GLFW_KEY_UP && action != GLFW_RELEASE) {
-        g_camera.ud_move_cam(1);
     } else if (key == GLFW_KEY_C && action != GLFW_RELEASE) {
         // No non-FPS mode here
         ((void)0);

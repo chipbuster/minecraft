@@ -34,7 +34,7 @@ void Camera::lm_rotate_cam(double screendX, double screendY)
 
     glm::mat4 rotation = glm::rotate(rotation_speed, rotAxis);
 
-    glm::vec3 nextLook = glm::normalize(glm::vec3(rotation * cart_to_hom(this->look_)));
+    glm::vec3 nextLook = glm::normalize(glm::vec3(rotation * glm::vec4(this->look_,1.0f)));
     if(glm::dot(nextLook, this->true_up_) > 0.99){
         this->look_ = this->look_;
     }else{
@@ -93,20 +93,6 @@ void Camera::ad_strafe_cam(int direction)
     update_internal_data();
 }
 
-void Camera::lr_roll_cam(int direction)
-{
-}
-
-void Camera::ud_move_cam(int direction){
-    if (direction > 0) {
-        this->eye_ += pan_speed * this->up_;
-    } else {
-        this->eye_ -= pan_speed * this->up_;
-    }
-    update_internal_data();
-}
-
-
 /* Assuming that look_, up_, and eye_ are the correct pieces of data, update
    redundant data forms (e.g. cam_to_world_, right_) to be consistent */
 void Camera::update_internal_data()
@@ -118,66 +104,11 @@ void Camera::update_internal_data()
 
     glm::mat3 rot(camX, camY, camZ);
 
-    glm::mat4 cam_to_world = rot_trans_to_hom(rot, eye_);
+    glm::mat4 cam_to_world = glm::mat4(rot);
+    cam_to_world[3] = glm::vec4(eye_,1.0f);
 
     this->right_ = camX;
     this->cam_to_world_ = cam_to_world;
     this->world_to_cam_ = glm::inverse(cam_to_world_);
     this->center_ = eye_ + camera_distance_ * look_;
-}
-
-glm::mat3 hom_to_cart(glm::mat4 inp)
-{
-    glm::mat3 r;
-    r[0][0] = inp[0][0];
-    r[0][1] = inp[0][1];
-    r[0][2] = inp[0][2];
-    r[1][0] = inp[1][0];
-    r[1][1] = inp[1][1];
-    r[1][2] = inp[1][2];
-    r[2][0] = inp[2][0];
-    r[2][1] = inp[2][1];
-    r[2][2] = inp[2][2];
-    return r;
-}
-glm::vec3 hom_to_cart(glm::vec4 inp)
-{
-    glm::vec3 r;
-    r[0] = inp[0];
-    r[1] = inp[1];
-    r[2] = inp[2];
-    return r;
-}
-
-glm::mat4 cart_to_hom(glm::mat3 inp)
-{
-    glm::mat4 r;
-    r[0][0] = inp[0][0];
-    r[0][1] = inp[0][1];
-    r[0][2] = inp[0][2];
-    r[1][0] = inp[1][0];
-    r[1][1] = inp[1][1];
-    r[1][2] = inp[1][2];
-    r[2][0] = inp[2][0];
-    r[2][1] = inp[2][1];
-    r[2][2] = inp[2][2];
-    return r;
-}
-glm::vec4 cart_to_hom(glm::vec3 inp)
-{
-    glm::vec4 r;
-    r[0] = inp[0];
-    r[1] = inp[1];
-    r[2] = inp[2];
-    r[3] = 1.0f;
-    return r;
-}
-
-glm::mat4 rot_trans_to_hom(glm::mat3 rot, glm::vec3 t)
-{
-    glm::mat4 r = cart_to_hom(rot);
-    r[3][0] = t[0];
-    r[3][1] = t[1];
-    r[3][2] = t[2];
-    return r;
 }
