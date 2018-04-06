@@ -11,7 +11,7 @@ std::ostream& operator<<(std::ostream& os, const glm::vec3 x);
 namespace {
 float pan_speed = 0.1f;
 float roll_speed = 0.1f;
-float rotation_speed = 0.05f;
+float rotation_speed = 0.03f;
 float zoom_speed = 0.1f;
 }; // namespace
 
@@ -33,8 +33,19 @@ void Camera::lm_rotate_cam(double screendX, double screendY)
     glm::vec3 rotAxis = glm::cross(-camAxis, this->look_);
 
     glm::mat4 rotation = glm::rotate(rotation_speed, rotAxis);
-    this->look_ = hom_to_cart(rotation * cart_to_hom(this->look_));
-    this->up_ = hom_to_cart(rotation * cart_to_hom(this->up_));
+
+    glm::vec3 nextLook = glm::normalize(glm::vec3(rotation * cart_to_hom(this->look_)));
+    if(glm::dot(nextLook, this->true_up_) > 0.99){
+        this->look_ = this->look_;
+    }else{
+        this->look_ = nextLook;
+        // Rule: look, up_, and true_up_ should be collinear
+        this->up_ = glm::normalize(
+            this->true_up_ - glm::dot(this->look_, this->true_up_) * this->look_
+        );
+    }   
+
+    assert(abs(glm::dot(this->up_, this->look_)) < 0.01);
 
     update_internal_data();
 }
@@ -84,15 +95,6 @@ void Camera::ad_strafe_cam(int direction)
 
 void Camera::lr_roll_cam(int direction)
 {
-    if (direction > 0) {
-        this->up_ = hom_to_cart(glm::rotate(-roll_speed, this->look_) *
-                                cart_to_hom(this->up_));
-    } else {
-        this->up_ = hom_to_cart(glm::rotate(roll_speed, this->look_) *
-                                cart_to_hom(this->up_));
-
-    }
-    update_internal_data();
 }
 
 void Camera::ud_move_cam(int direction){
