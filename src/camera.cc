@@ -17,12 +17,6 @@ float zoom_speed = 0.1f;
 
 Camera::Camera()
 {
-    // Relocated positions
-    this->eye_ = glm::vec3(0.0f,10.0f,10.0f);
-    this->up_  = glm::vec3(0.0f,1.0f,0.0f);
-//    this->look_ = glm::normalize(glm::vec3(0.0f,-1.0f,-1.0f));
-    this->look_ = glm::normalize(glm::vec3(0.0f,-1.0f,-1.0f));
-
     update_internal_data();
 }
 

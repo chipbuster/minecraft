@@ -23,12 +23,6 @@ std::ostream& operator<<(std::ostream& os, const glm::vec3 x)
     os << "[" << x[0] << "," << x[1] << "," << x[2] << "]";
     return os;
 }
-std::ostream& operator<<(std::ostream& os, const glm::uvec3 x)
-{
-    os << "[" << x[0] << "," << x[1] << "," << x[2] << "]";
-    return os;
-}
-
 
 const std::vector<glm::vec4> baseVerts = {
         glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(1.0, 0.0, 0.0, 1.0),
@@ -214,12 +208,4 @@ std::string Menger::objdump(std::vector<glm::vec4>& obj_vertices,
            << '\n';
     }
     return ss.str();
-}
-
-
-const std::vector<glm::vec4>* Menger::getBaseVerts(){
-    return &baseVerts;
-}
-const std::vector<glm::uvec3>* Menger::getBaseFaces(){
-    return &baseFaces;
 }

@@ -21,9 +21,6 @@ class Menger {
     static std::string objdump(std::vector<glm::vec4>& obj_vertices,
                                std::vector<glm::uvec3>& obj_faces);
 
-    const std::vector<glm::vec4>* getBaseVerts();
-    const std::vector<glm::uvec3>* getBaseFaces();
-
     private:
     int nesting_level_ = 0;
     bool dirty_ = false;

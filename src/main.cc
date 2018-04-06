@@ -16,25 +16,161 @@
 #include "camera.h"
 #include "menger.h"
 
-#include <ctime>
-
 int window_width = 800, window_height = 600;
 
 std::ostream& operator<<(std::ostream& os, const glm::vec4 x);
-std::ostream& operator<<(std::ostream& os, const glm::uvec3 x);
 
 // VBO and VAO descriptors.
 enum { kVertexBuffer, kIndexBuffer, kNumVbos };
 
 // These are our VAOs.
-enum { kGeometryVao, kFloorVao, kOceanVao, kLightVao, kNumVaos };
+enum { kGeometryVao, kFloorVao, kNumVaos };
 
 GLuint g_array_objects[kNumVaos]; // This will store the VAO descriptors.
 GLuint g_buffer_objects[kNumVaos]
                        [kNumVbos]; // These will store VBO descriptors.
 
-// Use lexical include to add shader programs
-#include "shaders.cc"
+// C++ 11 String Literal
+// See http://en.cppreference.com/w/cpp/language/string_literal
+const char* vertex_shader =
+        R"zzz(#version 330 core
+in vec4 vertex_position;
+uniform mat4 view;
+uniform vec4 light_position;
+out vec4 vs_light_direction;
+out vec4 u_pos;
+void main()
+{
+    u_pos = vertex_position;
+    gl_Position = view * vertex_position;
+    vs_light_direction = -gl_Position + view * light_position;
+}
+)zzz";
+
+const char* geometry_shader =
+        R"zzz(#version 330 core
+layout (triangles) in;
+layout (triangle_strip, max_vertices = 3) out;
+uniform mat4 projection;
+uniform mat4 view;
+in vec4 vs_light_direction[];
+in vec4 u_pos[];
+flat out vec4 normal;
+out vec4 light_direction;
+out vec4 world_pos;
+void main()
+{
+    int n = 0;
+    mat4 inv = inverse(view);
+    vec3 side2 = (u_pos[2] - u_pos[0]).xyz;
+    vec3 side1 = (u_pos[1] - u_pos[0]).xyz;
+    vec3 normal3 = normalize(cross(side1,side2));
+    vec4 faceNormal = vec4(normal3[0], normal3[1], normal3[2], 0.0);
+    for (n = 0; n < gl_in.length(); n++) {
+        light_direction = vs_light_direction[n];
+        gl_Position = projection * gl_in[n].gl_Position;
+        normal = faceNormal;
+        world_pos = u_pos[n];
+        EmitVertex();
+    }
+    EndPrimitive();
+}
+)zzz";
+
+const char* fragment_shader =
+        R"zzz(#version 330 core
+flat in vec4 normal;
+in vec4 light_direction;
+uniform mat4 view;
+out vec4 fragment_color;
+void main()
+{
+    vec4 color = vec4(1.0,1.0,1.0,1.0); 
+    float thresh = 0.98;
+    float pos_x = dot(normal, vec4(1.0,0.0,0.0,0.0));
+    float pos_y = dot(normal, vec4(0.0,1.0,0.0,0.0));
+    float pos_z = dot(normal, vec4(0.0,0.0,1.0,0.0));
+    float neg_x = dot(normal, vec4(-1.0,0.0,0.0,0.0));
+    float neg_y = dot(normal, vec4(0.0,-1.0,0.0,0.0));
+    float neg_z = dot(normal, vec4(0.0,0.0,-1.0,0.0));
+
+    if(pos_x > thresh){
+        color = vec4(1.0,0.0,0.0,1.0);
+    }
+    if(pos_y > thresh){
+        color = vec4(0.0,1.0,0.0,1.0);
+    }
+    if(pos_z > thresh){
+        color = vec4(0.0,0.0,1.0,1.0);
+    }
+    if(neg_x > thresh){
+        color = vec4(1.0,0.0,0.0,1.0);
+    }
+    if(neg_y > thresh){
+        color = vec4(0.0,1.0,0.0,1.0);
+    }
+    if(neg_z > thresh){
+        color = vec4(0.0,0.0,1.0,1.0);
+    }
+
+    float dot_nl = dot(normalize(light_direction), view * normalize(normal));
+    dot_nl = clamp(dot_nl, 0.0, 1.0);
+    fragment_color = clamp(dot_nl * color, 0.0, 1.0);
+}
+)zzz";
+
+// FIXME: Implement shader effects with an alternative shader.
+const char* floor_fragment_shader =
+        R"zzz(#version 330 core
+flat in vec4 normal;
+in vec4 light_direction;
+in vec4 world_pos;
+uniform mat4 view;
+out vec4 fragment_color;
+void main()
+{
+    float newX, newZ;
+    if(world_pos[0] < 0){
+        newX = abs(world_pos[0]) + 1;
+    }else{
+        newX = abs(world_pos[0]);
+    }
+    if(world_pos[2] < 0){
+        newZ = abs(world_pos[2]) + 1;
+    }else{
+        newZ = abs(world_pos[2]);
+    }
+
+    newX = mod(newX, 2);
+    newZ = mod(newZ, 2);
+
+    if(newX > 1 && newZ > 1 || newX < 1 && newZ < 1){
+        fragment_color = vec4(1.0,1.0,1.0,1.0);
+    }else{
+        fragment_color = vec4(0.0,0.0,0.0,0.0);
+    }
+
+    float dot_nl = dot(normalize(light_direction), view * normalize(normal));
+    dot_nl = clamp(dot_nl, 0.0, 1.0);
+    fragment_color = clamp( fragment_color * dot_nl, 0.0, 1.0);
+    fragment_color[3] = 1.0;
+}
+)zzz";
+
+void CreateTriangle(std::vector<glm::vec4>& vertices,
+                    std::vector<glm::uvec3>& indices)
+{
+    vertices.push_back(glm::vec4(-0.5f, -0.5f, -0.5f, 1.0f));
+    vertices.push_back(glm::vec4(0.5f, -0.5f, -0.5f, 1.0f));
+    vertices.push_back(glm::vec4(0.0f, 0.5f, -0.5f, 1.0f));
+    indices.push_back(glm::uvec3(0, 1, 2));
+}
+
+// FIXME: Save geometry to OBJ file
+void SaveObj(const std::string& file, const std::vector<glm::vec4>& vertices,
+             const std::vector<glm::uvec3>& indices)
+{
+}
 
 void ErrorCallback(int error, const char* description)
 {
@@ -45,14 +181,6 @@ std::shared_ptr<Menger> g_menger;
 Camera g_camera;
 std::vector<glm::vec4>* verts_ptr = nullptr;
 std::vector<glm::uvec3>* faces_ptr = nullptr;
-struct timespec start, end, tw_start, tw_end;
-bool draw_frames = false;
-bool unif_frames = false;
-bool draw_faces = true;
-int tess_inner = 4;
-int tess_outer = 4;
-bool draw_ocean = false;
-bool tidal_wave_active = false;
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
                  int mods)
@@ -73,20 +201,8 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
         } else {
             std::cout << "Sorry, the geometry isn't ready yet." << std::endl;
         }
-    } else if (key == GLFW_KEY_O && mods == GLFW_MOD_CONTROL &&
-               action == GLFW_RELEASE) {
-        draw_ocean = !draw_ocean;
-    } else if (key == GLFW_KEY_F && mods == GLFW_MOD_CONTROL &&
-               action == GLFW_RELEASE) {
-        draw_faces = !draw_faces;
-    } else if (key == GLFW_KEY_T && mods == GLFW_MOD_CONTROL &&
-               action == GLFW_RELEASE) {
-        tidal_wave_active = true;
-        clock_gettime(CLOCK_MONOTONIC, &tw_start);
     } else if (key == GLFW_KEY_W && action != GLFW_RELEASE) {
         g_camera.ws_walk_cam(1);
-    } else if (key == GLFW_KEY_U && action != GLFW_RELEASE) {
-        unif_frames = !unif_frames;
     } else if (key == GLFW_KEY_S && action != GLFW_RELEASE) {
         g_camera.ws_walk_cam(-1);
     } else if (key == GLFW_KEY_A && action != GLFW_RELEASE) {
@@ -104,18 +220,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
     } else if (key == GLFW_KEY_C && action != GLFW_RELEASE) {
         // No non-FPS mode here
         ((void)0);
-    } else if (key == GLFW_KEY_F && action != GLFW_RELEASE) {
-        draw_frames = !draw_frames;
-    } else if (key == GLFW_KEY_EQUAL && action != GLFW_RELEASE) {
-        tess_outer++;
-    } else if (key == GLFW_KEY_MINUS && action != GLFW_RELEASE) {
-        if (tess_outer > 1)
-            tess_outer--;
-    } else if (key == GLFW_KEY_PERIOD && action != GLFW_RELEASE) {
-        tess_inner++;
-    } else if (key == GLFW_KEY_COMMA && action != GLFW_RELEASE) {
-        if (tess_inner > 1)
-            tess_inner--;
     }
     if (!g_menger)
         return; // 0-4 only available in Menger mode.
@@ -165,10 +269,6 @@ int main(int argc, char* argv[])
     g_menger = std::make_shared<Menger>();
     glfwSetErrorCallback(ErrorCallback);
 
-    // Set initial clock time for simulation
-    uint64_t time_diff;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-
     // Ask an OpenGL 4.1 core profile context
     // It is required on OSX and non-NVIDIA Linux
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -197,7 +297,7 @@ int main(int argc, char* argv[])
     verts_ptr = &obj_vertices; // Initialize pointers for objdump calls
     faces_ptr = &obj_faces;
 
-    g_menger->set_nesting_level(0);
+    g_menger->set_nesting_level(3);
     g_menger->generate_geometry(obj_vertices, obj_faces);
     g_menger->set_clean();
 
@@ -236,7 +336,18 @@ int main(int argc, char* argv[])
                                 sizeof(uint32_t) * obj_faces.size() * 3,
                                 obj_faces.data(), GL_STATIC_DRAW));
 
-#include "floorGeom.cc"
+    std::vector<glm::vec4> floor_vertices;
+    std::vector<glm::uvec3> floor_faces;
+    {
+        constexpr float m = 1024.0f;
+        constexpr float t = -2.0f;
+        floor_vertices.push_back(glm::vec4(m, t, m, 1.0));
+        floor_vertices.push_back(glm::vec4(-m, t, m, 1.0));
+        floor_vertices.push_back(glm::vec4(-m, t, -m, 1.0));
+        floor_vertices.push_back(glm::vec4(m, t, -m, 1.0));
+        floor_faces.push_back(glm::uvec3(0, 2, 1));
+        floor_faces.push_back(glm::uvec3(3, 2, 0));
+    }
 
     // Switch to VAO for floor and generate VBOs
     CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kFloorVao]));
@@ -259,50 +370,6 @@ int main(int argc, char* argv[])
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    // Switch to VAO for ocean and generate VBOs
-    CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kOceanVao]));
-    CHECK_GL_ERROR(glGenBuffers(kNumVbos, &g_buffer_objects[kOceanVao][0]));
-
-    // Set up vertex data in the VBO
-    CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER,
-                                g_buffer_objects[kOceanVao][kVertexBuffer]));
-    CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER,
-                                sizeof(float) * ocean_vertices.size() * 4,
-                                ocean_vertices.data(), GL_STATIC_DRAW));
-    CHECK_GL_ERROR(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0));
-    CHECK_GL_ERROR(glEnableVertexAttribArray(0));
-
-    CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                g_buffer_objects[kOceanVao][kIndexBuffer]));
-    CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                                sizeof(uint32_t) * ocean_faces.size() * 4,
-                                ocean_faces.data(), GL_STATIC_DRAW));
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // Switch to VAO for light and generate VBOs
-    CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kLightVao]));
-    CHECK_GL_ERROR(glGenBuffers(kNumVbos, &g_buffer_objects[kLightVao][0]));
-
-    // Set up vertex data in the VBO
-    const std::vector<glm::vec4>* lightVerts = g_menger->getBaseVerts();
-    const std::vector<glm::uvec3>* lightFaces = g_menger->getBaseFaces();
-    CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER,
-                                g_buffer_objects[kLightVao][kVertexBuffer]));
-    CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER,
-                                sizeof(float) * lightVerts->size() * 4,
-                                lightVerts->data(), GL_STATIC_DRAW));
-    CHECK_GL_ERROR(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0));
-    CHECK_GL_ERROR(glEnableVertexAttribArray(0));
-
-    CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                g_buffer_objects[kLightVao][kIndexBuffer]));
-    CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                                sizeof(uint32_t) * lightFaces->size() * 3,
-                                lightFaces->data(), GL_STATIC_DRAW));
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
     // Setup vertex shader.
     GLuint vertex_shader_id = 0;
     const char* vertex_source_pointer = vertex_shader;
@@ -312,25 +379,14 @@ int main(int argc, char* argv[])
     glCompileShader(vertex_shader_id);
     CHECK_GL_SHADER_ERROR(vertex_shader_id);
 
-    // Setup cube geometry shader.
-    GLuint cube_geometry_shader_id = 0;
-    const char* cube_geometry_source_pointer = cube_geometry_shader;
-    CHECK_GL_ERROR(cube_geometry_shader_id =
-                           glCreateShader(GL_GEOMETRY_SHADER));
-    CHECK_GL_ERROR(glShaderSource(cube_geometry_shader_id, 1,
-                                  &cube_geometry_source_pointer, nullptr));
-    glCompileShader(cube_geometry_shader_id);
-    CHECK_GL_SHADER_ERROR(cube_geometry_shader_id);
-
-    // Setup floor geometry shader.
-    GLuint floor_geometry_shader_id = 0;
-    const char* floor_geometry_source_pointer = floor_geometry_shader;
-    CHECK_GL_ERROR(floor_geometry_shader_id =
-                           glCreateShader(GL_GEOMETRY_SHADER));
-    CHECK_GL_ERROR(glShaderSource(floor_geometry_shader_id, 1,
-                                  &floor_geometry_source_pointer, nullptr));
-    glCompileShader(floor_geometry_shader_id);
-    CHECK_GL_SHADER_ERROR(floor_geometry_shader_id);
+    // Setup geometry shader.
+    GLuint geometry_shader_id = 0;
+    const char* geometry_source_pointer = geometry_shader;
+    CHECK_GL_ERROR(geometry_shader_id = glCreateShader(GL_GEOMETRY_SHADER));
+    CHECK_GL_ERROR(glShaderSource(geometry_shader_id, 1,
+                                  &geometry_source_pointer, nullptr));
+    glCompileShader(geometry_shader_id);
+    CHECK_GL_SHADER_ERROR(geometry_shader_id);
 
     // Setup fragment shader.
     GLuint fragment_shader_id = 0;
@@ -341,122 +397,12 @@ int main(int argc, char* argv[])
     glCompileShader(fragment_shader_id);
     CHECK_GL_SHADER_ERROR(fragment_shader_id);
 
-    // Setup floor TCS
-    GLuint tcs_floor_shader_id = 0;
-    const char* tcs_floor_source_pointer = tess_ctrl_floor_shader;
-    CHECK_GL_ERROR(tcs_floor_shader_id =
-                           glCreateShader(GL_TESS_CONTROL_SHADER));
-    CHECK_GL_ERROR(glShaderSource(tcs_floor_shader_id, 1,
-                                  &tcs_floor_source_pointer, nullptr));
-    glCompileShader(tcs_floor_shader_id);
-    CHECK_GL_SHADER_ERROR(tcs_floor_shader_id);
-
-    // Setup floor TES
-    GLuint tes_floor_shader_id = 0;
-    const char* tes_floor_source_pointer = tess_eval_floor_shader;
-    CHECK_GL_ERROR(tes_floor_shader_id =
-                           glCreateShader(GL_TESS_EVALUATION_SHADER));
-    CHECK_GL_ERROR(glShaderSource(tes_floor_shader_id, 1,
-                                  &tes_floor_source_pointer, nullptr));
-    glCompileShader(tes_floor_shader_id);
-    CHECK_GL_SHADER_ERROR(tes_floor_shader_id);
-
-    // Setup floor fragment shader
-    GLuint floor_fragment_shader_id = 0;
-    const char* floor_fragment_source_pointer = floor_fragment_shader;
-    CHECK_GL_ERROR(floor_fragment_shader_id =
-                           glCreateShader(GL_FRAGMENT_SHADER));
-    CHECK_GL_ERROR(glShaderSource(floor_fragment_shader_id, 1,
-                                  &floor_fragment_source_pointer, nullptr));
-    glCompileShader(floor_fragment_shader_id);
-    CHECK_GL_SHADER_ERROR(floor_fragment_shader_id);
-
-    // Setup ocean TCS
-    GLuint tcs_ocean_shader_id = 0;
-    const char* tcs_ocean_source_pointer = tess_ctrl_ocean_shader;
-    CHECK_GL_ERROR(tcs_ocean_shader_id =
-                           glCreateShader(GL_TESS_CONTROL_SHADER));
-    CHECK_GL_ERROR(glShaderSource(tcs_ocean_shader_id, 1,
-                                  &tcs_ocean_source_pointer, nullptr));
-    glCompileShader(tcs_ocean_shader_id);
-    CHECK_GL_SHADER_ERROR(tcs_ocean_shader_id);
-
-    // Setup ocean TES
-    GLuint tes_ocean_shader_id = 0;
-    const char* tes_ocean_source_pointer = tess_eval_ocean_shader;
-    CHECK_GL_ERROR(tes_ocean_shader_id =
-                           glCreateShader(GL_TESS_EVALUATION_SHADER));
-    CHECK_GL_ERROR(glShaderSource(tes_ocean_shader_id, 1,
-                                  &tes_ocean_source_pointer, nullptr));
-    glCompileShader(tes_ocean_shader_id);
-    CHECK_GL_SHADER_ERROR(tes_ocean_shader_id);
-
-    // Setup ocean fragment shader
-    GLuint ocean_fragment_shader_id = 0;
-    const char* ocean_fragment_source_pointer = ocean_fragment_shader;
-    CHECK_GL_ERROR(ocean_fragment_shader_id =
-                           glCreateShader(GL_FRAGMENT_SHADER));
-    CHECK_GL_ERROR(glShaderSource(ocean_fragment_shader_id, 1,
-                                  &ocean_fragment_source_pointer, nullptr));
-    glCompileShader(ocean_fragment_shader_id);
-    CHECK_GL_SHADER_ERROR(ocean_fragment_shader_id);
-
-    // Setup ocean geometry shader
-    GLuint ocean_geometry_shader_id = 0;
-    const char* ocean_geometry_source_pointer = ocean_geometry_shader;
-    CHECK_GL_ERROR(ocean_geometry_shader_id =
-                           glCreateShader(GL_GEOMETRY_SHADER));
-    CHECK_GL_ERROR(glShaderSource(ocean_geometry_shader_id, 1,
-                                  &ocean_geometry_source_pointer, nullptr));
-    glCompileShader(ocean_geometry_shader_id);
-    CHECK_GL_SHADER_ERROR(ocean_geometry_shader_id);
-
-    // Setup shaders for light source
-    // Setup light TES
-    GLuint tess_eval_light_shader_id = 0;
-    const char* tess_eval_light_source_pointer = tess_eval_light_shader;
-    CHECK_GL_ERROR(tess_eval_light_shader_id =
-                           glCreateShader(GL_TESS_EVALUATION_SHADER));
-    CHECK_GL_ERROR(glShaderSource(tess_eval_light_shader_id, 1,
-                                  &tess_eval_light_source_pointer, nullptr));
-    glCompileShader(tess_eval_light_shader_id);
-    CHECK_GL_SHADER_ERROR(tess_eval_light_shader_id);
-
-    // Set up light vertex shader
-    GLuint light_vertex_shader_id = 0;
-    const char* light_vertex_source_pointer = light_vertex_shader;
-    CHECK_GL_ERROR(light_vertex_shader_id = glCreateShader(GL_VERTEX_SHADER));
-    CHECK_GL_ERROR(glShaderSource(light_vertex_shader_id, 1,
-                                  &light_vertex_source_pointer, nullptr));
-    glCompileShader(light_vertex_shader_id);
-    CHECK_GL_SHADER_ERROR(light_vertex_shader_id);
-
-    // Set up light TCS
-    GLuint tess_ctrl_light_shader_id = 0;
-    const char* tess_ctrl_light_source_pointer = tess_ctrl_light_shader;
-    CHECK_GL_ERROR(tess_ctrl_light_shader_id =
-                           glCreateShader(GL_TESS_CONTROL_SHADER));
-    CHECK_GL_ERROR(glShaderSource(tess_ctrl_light_shader_id, 1,
-                                  &tess_ctrl_light_source_pointer, nullptr));
-    glCompileShader(tess_ctrl_light_shader_id);
-    CHECK_GL_SHADER_ERROR(tess_ctrl_light_shader_id);
-
-    // Set up light fragment shader
-    GLuint light_fragment_shader_id = 0;
-    const char* light_fragment_source_pointer = light_fragment_shader;
-    CHECK_GL_ERROR(light_fragment_shader_id =
-                           glCreateShader(GL_FRAGMENT_SHADER));
-    CHECK_GL_ERROR(glShaderSource(light_fragment_shader_id, 1,
-                                  &light_fragment_source_pointer, nullptr));
-    glCompileShader(light_fragment_shader_id);
-    CHECK_GL_SHADER_ERROR(light_fragment_shader_id);
-
     // Let's create our program.
     GLuint program_id = 0;
     CHECK_GL_ERROR(program_id = glCreateProgram());
     CHECK_GL_ERROR(glAttachShader(program_id, vertex_shader_id));
     CHECK_GL_ERROR(glAttachShader(program_id, fragment_shader_id));
-    CHECK_GL_ERROR(glAttachShader(program_id, cube_geometry_shader_id));
+    CHECK_GL_ERROR(glAttachShader(program_id, geometry_shader_id));
 
     // Bind attributes.
     CHECK_GL_ERROR(glBindAttribLocation(program_id, 0, "vertex_position"));
@@ -474,12 +420,16 @@ int main(int argc, char* argv[])
     GLint light_position_location = 0;
     CHECK_GL_ERROR(light_position_location =
                            glGetUniformLocation(program_id, "light_position"));
-    GLint draw_frames_flag_location = 0;
-    CHECK_GL_ERROR(draw_frames_flag_location =
-                           glGetUniformLocation(program_id, "frames"));
-    GLint unif_frames_flag_location = 0;
-    CHECK_GL_ERROR(unif_frames_flag_location =
-                           glGetUniformLocation(program_id, "unif_frames"));
+
+    // Setup fragment shader for the floor
+    GLuint floor_fragment_shader_id = 0;
+    const char* floor_fragment_source_pointer = floor_fragment_shader;
+    CHECK_GL_ERROR(floor_fragment_shader_id =
+                           glCreateShader(GL_FRAGMENT_SHADER));
+    CHECK_GL_ERROR(glShaderSource(floor_fragment_shader_id, 1,
+                                  &floor_fragment_source_pointer, nullptr));
+    glCompileShader(floor_fragment_shader_id);
+    CHECK_GL_SHADER_ERROR(floor_fragment_shader_id);
 
     // Note: you can reuse the vertex and geometry shader objects
     GLuint floor_program_id = 0;
@@ -490,10 +440,8 @@ int main(int argc, char* argv[])
     // Smash shaders together
     CHECK_GL_ERROR(floor_program_id = glCreateProgram());
     CHECK_GL_ERROR(glAttachShader(floor_program_id, vertex_shader_id));
-    CHECK_GL_ERROR(glAttachShader(floor_program_id, tcs_floor_shader_id));
-    CHECK_GL_ERROR(glAttachShader(floor_program_id, tes_floor_shader_id));
     CHECK_GL_ERROR(glAttachShader(floor_program_id, floor_fragment_shader_id));
-    CHECK_GL_ERROR(glAttachShader(floor_program_id, floor_geometry_shader_id));
+    CHECK_GL_ERROR(glAttachShader(floor_program_id, geometry_shader_id));
 
     CHECK_GL_ERROR(
             glBindAttribLocation(floor_program_id, 0, "vertex_position"));
@@ -509,103 +457,8 @@ int main(int argc, char* argv[])
                            glGetUniformLocation(floor_program_id, "view"));
     CHECK_GL_ERROR(floor_light_position_location = glGetUniformLocation(
                            floor_program_id, "light_position"));
-    GLint tess_level_inner_location = 0;
-    CHECK_GL_ERROR(tess_level_inner_location = glGetUniformLocation(
-                           floor_program_id, "TessLevelInner"));
-    GLint tess_level_outer_location = 0;
-    CHECK_GL_ERROR(tess_level_outer_location = glGetUniformLocation(
-                           floor_program_id, "TessLevelOuter"));
-    GLint draw_frames_floor_flag_location = 0;
-    CHECK_GL_ERROR(draw_frames_floor_flag_location =
-                           glGetUniformLocation(floor_program_id, "frames"));
-    GLint unif_frames_floor_flag_location = 0;
-    CHECK_GL_ERROR(unif_frames_floor_flag_location = glGetUniformLocation(
-                           floor_program_id, "unif_frames"));
 
-    // Note: you can reuse the vertex and geometry shader objects
-    GLuint ocean_program_id = 0;
-    GLint ocean_projection_matrix_location = 0;
-    GLint ocean_view_matrix_location = 0;
-    GLint ocean_light_position_location = 0;
-    GLint ocean_timer_location = 0;
-    GLint draw_frames_ocean_flag_location = 0;
-    GLint tidal_wave_timer_location = 0;
-    GLint unif_frames_ocean_flag_location = 0;
-
-    // Smash shaders together
-    CHECK_GL_ERROR(ocean_program_id = glCreateProgram());
-    CHECK_GL_ERROR(glAttachShader(ocean_program_id, vertex_shader_id));
-    CHECK_GL_ERROR(glAttachShader(ocean_program_id, tcs_ocean_shader_id));
-    CHECK_GL_ERROR(glAttachShader(ocean_program_id, tes_ocean_shader_id));
-    CHECK_GL_ERROR(glAttachShader(ocean_program_id, ocean_fragment_shader_id));
-    CHECK_GL_ERROR(glAttachShader(ocean_program_id, ocean_geometry_shader_id));
-
-    CHECK_GL_ERROR(
-            glBindAttribLocation(ocean_program_id, 0, "vertex_position"));
-    CHECK_GL_ERROR(
-            glBindFragDataLocation(ocean_program_id, 0, "fragment_color"));
-    glLinkProgram(ocean_program_id);
-    CHECK_GL_PROGRAM_ERROR(ocean_program_id);
-
-    // Get uniforms
-    CHECK_GL_ERROR(ocean_projection_matrix_location = glGetUniformLocation(
-                           ocean_program_id, "projection"));
-    CHECK_GL_ERROR(ocean_view_matrix_location =
-                           glGetUniformLocation(ocean_program_id, "view"));
-    CHECK_GL_ERROR(ocean_light_position_location = glGetUniformLocation(
-                           ocean_program_id, "light_position"));
-    CHECK_GL_ERROR(tess_level_inner_location = glGetUniformLocation(
-                           ocean_program_id, "TessLevelInner"));
-    CHECK_GL_ERROR(tess_level_outer_location = glGetUniformLocation(
-                           ocean_program_id, "TessLevelOuter"));
-    CHECK_GL_ERROR(draw_frames_ocean_flag_location =
-                           glGetUniformLocation(ocean_program_id, "frames"));
-    CHECK_GL_ERROR(ocean_timer_location =
-                           glGetUniformLocation(ocean_program_id, "timer"));
-    CHECK_GL_ERROR(tidal_wave_timer_location =
-                           glGetUniformLocation(ocean_program_id, "tw_timer"));
-    CHECK_GL_ERROR(unif_frames_ocean_flag_location = glGetUniformLocation(
-                           ocean_program_id, "unif_frames"));
-
-    // Create program for light
-    GLuint light_program_id = 0;
-    CHECK_GL_ERROR(light_program_id = glCreateProgram());
-    CHECK_GL_ERROR(glAttachShader(light_program_id, light_vertex_shader_id));
-    CHECK_GL_ERROR(glAttachShader(light_program_id, tess_ctrl_light_shader_id));
-    CHECK_GL_ERROR(glAttachShader(light_program_id, tess_eval_light_shader_id));
-    CHECK_GL_ERROR(glAttachShader(light_program_id, light_fragment_shader_id));
-
-    // Bind attributes.
-    CHECK_GL_ERROR(glBindAttribLocation(program_id, 0, "vertex_position"));
-    CHECK_GL_ERROR(glBindFragDataLocation(program_id, 0, "fragment_color"));
-    glLinkProgram(program_id);
-    CHECK_GL_PROGRAM_ERROR(program_id);
-
-    // Link program
-    CHECK_GL_ERROR(
-            glBindAttribLocation(light_program_id, 0, "vertex_position"));
-    CHECK_GL_ERROR(
-            glBindFragDataLocation(light_program_id, 0, "fragment_color"));
-    glLinkProgram(light_program_id);
-    CHECK_GL_PROGRAM_ERROR(light_program_id);
-
-    // Get uniforms
-    GLuint light_projection_matrix_location = 0;
-    CHECK_GL_ERROR(light_projection_matrix_location = glGetUniformLocation(
-                           light_program_id, "projection"));
-    GLuint light_view_matrix_location = 0;
-    CHECK_GL_ERROR(light_view_matrix_location =
-                           glGetUniformLocation(light_program_id, "view"));
-    GLuint light_center_location = 0;
-    CHECK_GL_ERROR(light_center_location =
-                           glGetUniformLocation(light_program_id, "center"));
-    GLuint draw_frames_light_location = 0;
-    CHECK_GL_ERROR(draw_frames_light_location =
-                           glGetUniformLocation(light_program_id, "frames"));
-
-
-
-    glm::vec4 light_position = glm::vec4(-10.0f, 10.0f, 0.0f, 1.0f);
+    glm::vec4 light_position = glm::vec4(10.0f, 10.0f, 10.0f, 1.0f);
     float aspect = 0.0f;
     float theta = 0.0f;
     while (!glfwWindowShouldClose(window)) {
@@ -624,7 +477,7 @@ int main(int argc, char* argv[])
             g_menger->generate_geometry(obj_vertices, obj_faces);
             g_menger->set_clean();
 
-            // Redefine the
+            // Redefine the 
             CHECK_GL_ERROR(glBindBuffer(
                     GL_ARRAY_BUFFER,
                     g_buffer_objects[kGeometryVao][kVertexBuffer]));
@@ -642,14 +495,10 @@ int main(int argc, char* argv[])
         // Compute the projection matrix.
         aspect = static_cast<float>(window_width) / window_height;
         glm::mat4 projection_matrix =
-                glm::perspective(glm::radians(45.0f), aspect, 0.01f, 1000.0f);
+                glm::perspective(glm::radians(45.0f), aspect, 0.0001f, 1000.0f);
 
         // Compute the view matrix
         glm::mat4 view_matrix = g_camera.get_view_matrix();
-
-        // Do we draw wireframes?
-        float frames_flag = draw_frames ? 1.0f : -1.0f;
-        float u_frames_flag = unif_frames ? 1.0f : -1.0f;
 
         // Use our program.
         CHECK_GL_ERROR(glUseProgram(program_id));
@@ -657,133 +506,35 @@ int main(int argc, char* argv[])
         // Pass uniforms in.
         CHECK_GL_ERROR(glUniformMatrix4fv(projection_matrix_location, 1,
                                           GL_FALSE, &projection_matrix[0][0]));
-        CHECK_GL_ERROR(glUniform1f(draw_frames_flag_location, frames_flag));
-        CHECK_GL_ERROR(glUniform1f(unif_frames_flag_location, u_frames_flag));
         CHECK_GL_ERROR(glUniformMatrix4fv(view_matrix_location, 1, GL_FALSE,
                                           &view_matrix[0][0]));
         CHECK_GL_ERROR(
                 glUniform4fv(light_position_location, 1, &light_position[0]));
 
         // Draw our triangles.
-        CHECK_GL_ERROR(glPolygonMode(GL_FRONT_AND_BACK,
-                                     draw_faces ? GL_FILL : GL_LINE));
         CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, obj_faces.size() * 3,
                                       GL_UNSIGNED_INT, 0));
 
-        if (draw_ocean) {
-            // Note: What you need to do is
-            // 0. Set the time for the ocean
-            float tw_elapsed_sec;
-            clock_gettime(CLOCK_MONOTONIC, &end);
-            time_diff = 1000000000L * (end.tv_sec - start.tv_sec) +
-                        end.tv_nsec - start.tv_nsec;
-            float elapsed_sec = static_cast<float>(time_diff) / 1000000000.0f;
-
-            if (tidal_wave_active) {
-                clock_gettime(CLOCK_MONOTONIC, &tw_end);
-                time_diff = 1000000000L * (tw_end.tv_sec - tw_start.tv_sec) +
-                            tw_end.tv_nsec - tw_start.tv_nsec;
-                tw_elapsed_sec = static_cast<float>(time_diff) / 1000000000.0f;
-            } else {
-                tw_elapsed_sec = -1.0f;
-            }
-            if (tw_elapsed_sec > 25) {
-                tidal_wave_active = false;
-            }
-            // 	1. Switch VAO
-            CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kOceanVao]));
-            CHECK_GL_ERROR(
-                    glBindBuffer(GL_ARRAY_BUFFER,
-                                 g_buffer_objects[kOceanVao][kVertexBuffer]));
-            CHECK_GL_ERROR(
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                 g_buffer_objects[kOceanVao][kIndexBuffer]));
-            // 	2. Switch Program
-            CHECK_GL_ERROR(glUseProgram(ocean_program_id));
-            // 	3. Pass Uniforms
-            CHECK_GL_ERROR(
-                    glUniform1f(draw_frames_ocean_flag_location, frames_flag));
-            CHECK_GL_ERROR(
-                    glUniform1f(tess_level_inner_location, (float)tess_inner));
-            CHECK_GL_ERROR(
-                    glUniform1f(tess_level_outer_location, (float)tess_outer));
-            CHECK_GL_ERROR(
-                    glUniform1f(tidal_wave_timer_location, tw_elapsed_sec));
-            CHECK_GL_ERROR(glUniform1f(unif_frames_ocean_flag_location,
-                                       u_frames_flag));
-            CHECK_GL_ERROR(
-                    glUniform1f(ocean_timer_location, (float)elapsed_sec));
-            CHECK_GL_ERROR(glUniformMatrix4fv(ocean_projection_matrix_location,
-                                              1, GL_FALSE,
-                                              &projection_matrix[0][0]));
-            CHECK_GL_ERROR(glUniformMatrix4fv(ocean_view_matrix_location, 1,
-                                              GL_FALSE, &view_matrix[0][0]));
-            CHECK_GL_ERROR(glUniform4fv(ocean_light_position_location, 1,
-                                        &light_position[0]));
-            // 	4. Call glDrawElements, since input geometry is
-            // 	indicated by VAO.
-            CHECK_GL_ERROR(glPolygonMode(GL_FRONT_AND_BACK,
-                                         draw_faces ? GL_FILL : GL_LINE));
-            CHECK_GL_ERROR(glPatchParameteri(GL_PATCH_VERTICES, 4));
-            CHECK_GL_ERROR(glDrawElements(GL_PATCHES, ocean_faces.size() * 4,
-                                          GL_UNSIGNED_INT, 0));
-
-        } else {
-            // Note: What you need to do is
-            // 	1. Switch VAO
-            CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kFloorVao]));
-            CHECK_GL_ERROR(
-                    glBindBuffer(GL_ARRAY_BUFFER,
-                                 g_buffer_objects[kFloorVao][kVertexBuffer]));
-            CHECK_GL_ERROR(
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                 g_buffer_objects[kFloorVao][kIndexBuffer]));
-            // 	2. Switch Program
-            CHECK_GL_ERROR(glUseProgram(floor_program_id));
-            // 	3. Pass Uniforms
-            CHECK_GL_ERROR(
-                    glUniform1f(draw_frames_floor_flag_location, frames_flag));
-            CHECK_GL_ERROR(glUniform1f(unif_frames_floor_flag_location,
-                                       u_frames_flag));
-            CHECK_GL_ERROR(
-                    glUniform1f(tess_level_inner_location, (float)tess_inner));
-            CHECK_GL_ERROR(
-                    glUniform1f(tess_level_outer_location, (float)tess_outer));
-            CHECK_GL_ERROR(glUniformMatrix4fv(floor_projection_matrix_location,
-                                              1, GL_FALSE,
-                                              &projection_matrix[0][0]));
-            CHECK_GL_ERROR(glUniformMatrix4fv(floor_view_matrix_location, 1,
-                                              GL_FALSE, &view_matrix[0][0]));
-            CHECK_GL_ERROR(glUniform4fv(floor_light_position_location, 1,
-                                        &light_position[0]));
-            // 	4. Call glDrawElements, since input geometry is
-            // 	indicated by VAO.
-            CHECK_GL_ERROR(glPolygonMode(GL_FRONT_AND_BACK,
-                                         draw_faces ? GL_FILL : GL_LINE));
-            CHECK_GL_ERROR(glPatchParameteri(GL_PATCH_VERTICES, 3));
-            CHECK_GL_ERROR(glDrawElements(GL_PATCHES, floor_faces.size() * 3,
-                                          GL_UNSIGNED_INT, 0));
-        }
-
-        // Switch to the light program
-        CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kLightVao]));
+        // FIXME: Render the floor
+        // Note: What you need to do is
+        // 	1. Switch VAO
+        CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kFloorVao]));
         CHECK_GL_ERROR(glBindBuffer(
-                GL_ARRAY_BUFFER, g_buffer_objects[kLightVao][kVertexBuffer]));
+                GL_ARRAY_BUFFER, g_buffer_objects[kFloorVao][kVertexBuffer]));
         CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                    g_buffer_objects[kLightVao][kIndexBuffer]));
-
-        CHECK_GL_ERROR(glUseProgram(light_program_id));
-
-        // Pass uniforms
-        CHECK_GL_ERROR(glUniformMatrix4fv(light_projection_matrix_location, 1,
+                                    g_buffer_objects[kFloorVao][kIndexBuffer]));
+        // 	2. Switch Program
+        CHECK_GL_ERROR(glUseProgram(floor_program_id));
+        // 	3. Pass Uniforms
+        CHECK_GL_ERROR(glUniformMatrix4fv(floor_projection_matrix_location, 1,
                                           GL_FALSE, &projection_matrix[0][0]));
-        CHECK_GL_ERROR(glUniformMatrix4fv(light_view_matrix_location, 1,
+        CHECK_GL_ERROR(glUniformMatrix4fv(floor_view_matrix_location, 1,
                                           GL_FALSE, &view_matrix[0][0]));
-        CHECK_GL_ERROR(
-                glUniform4fv(light_center_location, 1, &light_position[0]));
-
-        CHECK_GL_ERROR(glPatchParameteri(GL_PATCH_VERTICES, 3));
-        CHECK_GL_ERROR(glDrawElements(GL_PATCHES, lightFaces->size() * 3,
+        CHECK_GL_ERROR(glUniform4fv(floor_light_position_location, 1,
+                                    &light_position[0]));
+        // 	4. Call glDrawElements, since input geometry is
+        // 	indicated by VAO.
+        CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3,
                                       GL_UNSIGNED_INT, 0));
 
         // Poll and swap.
