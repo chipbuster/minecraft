@@ -1,7 +1,11 @@
 SET(pwd ${CMAKE_CURRENT_LIST_DIR})
 
-SET(src "")
-AUX_SOURCE_DIRECTORY(${pwd} src)
+SET(src 
+"${CMAKE_CURRENT_LIST_DIR}/camera.cc"
+"${CMAKE_CURRENT_LIST_DIR}/main.cc"
+"${CMAKE_CURRENT_LIST_DIR}/menger.cc"
+"${CMAKE_CURRENT_LIST_DIR}/tictoc.c"
+  )
 add_executable(minecraft ${src})
 message(STATUS "minecraft added")
 

@@ -15,6 +15,7 @@
 #include <debuggl.h>
 #include "camera.h"
 #include "menger.h"
+#include "tictoc.h"
 
 int window_width = 800, window_height = 600;
 
@@ -324,6 +325,7 @@ int main(int argc, char* argv[])
     glm::vec4 light_position = glm::vec4(10.0f, 10.0f, 10.0f, 1.0f);
     float aspect = 0.0f;
     float theta = 0.0f;
+    TicTocTimer timer = tic();
     while (!glfwWindowShouldClose(window)) {
         // Setup some basic window stuff.
         glfwGetFramebufferSize(window, &window_width, &window_height);
@@ -399,6 +401,10 @@ int main(int argc, char* argv[])
         // 	indicated by VAO.
         CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3,
                                       GL_UNSIGNED_INT, 0));
+
+        // Let camera velocities decay
+        double timeDiff = toc(&timer);
+        g_camera.update_physics(timeDiff);
 
         // Poll and swap.
         glfwPollEvents();

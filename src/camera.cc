@@ -112,3 +112,14 @@ void Camera::update_internal_data()
     this->world_to_cam_ = glm::inverse(cam_to_world_);
     this->center_ = eye_ + camera_distance_ * look_;
 }
+
+void Camera::update_physics(double timeDiff){
+    // Update camera position with velocity + explicit Euler
+    this->eye_ += (float)timeDiff * this->velocity_;
+
+    // Update camera velocity from gravity
+    this->velocity_ += glm::vec3(0.0f,-gravity, 0.0f);
+
+    // Update camera velocity from friction
+    // TODO
+}

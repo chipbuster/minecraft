@@ -11,6 +11,7 @@ public:
     void mm_trans_cam(double screenX, double screenY);
     void ws_walk_cam(int direction);
     void ad_strafe_cam(int direction);
+    void update_physics(double timestep);
 
     Camera();
     ~Camera() {};
@@ -24,6 +25,10 @@ private:
     glm::vec3 center_;
     glm::mat4 cam_to_world_;
     glm::mat4 world_to_cam_;
+
+    glm::vec3 velocity_ = glm::vec3(0.0f,0.0f,0.0f);
+    float gravity = 9.8;
+    float friction = 1.0;
 
     void update_internal_data();
     // Note: you may need additional member variables
