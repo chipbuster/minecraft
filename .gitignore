@@ -1,0 +1,7 @@
+build/*
+**/.vscode
+*.png
+*.bmp
+*.obj
+raycheck.out/
+third-party
