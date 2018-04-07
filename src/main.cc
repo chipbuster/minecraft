@@ -14,7 +14,6 @@
 #include <GLFW/glfw3.h>
 #include <debuggl.h>
 #include "camera.h"
-#include "menger.h"
 #include "tictoc.h"
 
 int window_width = 800, window_height = 600;
@@ -25,7 +24,7 @@ std::ostream& operator<<(std::ostream& os, const glm::vec4 x);
 enum { kVertexBuffer, kIndexBuffer, kNumVbos };
 
 // These are our VAOs.
-enum { kGeometryVao, kFloorVao, kNumVaos };
+enum { kCubeVao, kFloorVao, kNumVaos };
 
 GLuint g_array_objects[kNumVaos]; // This will store the VAO descriptors.
 GLuint g_buffer_objects[kNumVaos]
@@ -33,6 +32,7 @@ GLuint g_buffer_objects[kNumVaos]
 
 // Include shader program strings
 #include "shaders_include.cc"
+#include "cubedata.cc"
 
 void CreateTriangle(std::vector<glm::vec4>& vertices,
                     std::vector<glm::uvec3>& indices)
@@ -54,7 +54,6 @@ void ErrorCallback(int error, const char* description)
     std::cerr << "GLFW Error: " << description << "\n";
 }
 
-std::shared_ptr<Menger> g_menger;
 Camera g_camera;
 std::vector<glm::vec4>* verts_ptr = nullptr;
 std::vector<glm::uvec3>* faces_ptr = nullptr;
@@ -85,18 +84,11 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
         // No non-FPS mode here
         ((void)0);
     }
-    if (!g_menger)
-        return; // 0-4 only available in Menger mode.
     if (key == GLFW_KEY_0 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(0);
     } else if (key == GLFW_KEY_1 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(1);
     } else if (key == GLFW_KEY_2 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(2);
     } else if (key == GLFW_KEY_3 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(3);
     } else if (key == GLFW_KEY_4 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(4);
     }
 }
 
@@ -127,10 +119,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 
 int main(int argc, char* argv[])
 {
-    std::string window_title = "Menger";
+    std::string window_title = "Minecraft, made by Microsoft";
     if (!glfwInit())
         exit(EXIT_FAILURE);
-    g_menger = std::make_shared<Menger>();
     glfwSetErrorCallback(ErrorCallback);
 
     // Ask an OpenGL 4.1 core profile context
@@ -156,14 +147,8 @@ int main(int argc, char* argv[])
     std::cout << "Renderer: " << renderer << "\n";
     std::cout << "OpenGL version supported:" << version << "\n";
 
-    std::vector<glm::vec4> obj_vertices;
-    std::vector<glm::uvec3> obj_faces;
-    verts_ptr = &obj_vertices; // Initialize pointers for objdump calls
-    faces_ptr = &obj_faces;
-
-    g_menger->set_nesting_level(3);
-    g_menger->generate_geometry(obj_vertices, obj_faces);
-    g_menger->set_clean();
+    std::vector<glm::vec4> obj_vertices = CubeData::baseVerts;
+    std::vector<glm::uvec3> obj_faces = CubeData::baseFaces;
 
     glm::vec4 min_bounds = glm::vec4(std::numeric_limits<float>::max());
     glm::vec4 max_bounds = glm::vec4(-std::numeric_limits<float>::max());
@@ -178,14 +163,14 @@ int main(int argc, char* argv[])
     CHECK_GL_ERROR(glGenVertexArrays(kNumVaos, &g_array_objects[0]));
 
     // Switch to the VAO for Geometry.
-    CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kGeometryVao]));
+    CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kCubeVao]));
 
     // Generate buffer objects
-    CHECK_GL_ERROR(glGenBuffers(kNumVbos, &g_buffer_objects[kGeometryVao][0]));
+    CHECK_GL_ERROR(glGenBuffers(kNumVbos, &g_buffer_objects[kCubeVao][0]));
 
     // Setup vertex data in a VBO.
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER,
-                                g_buffer_objects[kGeometryVao][kVertexBuffer]));
+                                g_buffer_objects[kCubeVao][kVertexBuffer]));
     // NOTE: We do not send anything right now, we just describe it to OpenGL.
     CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER,
                                 sizeof(float) * obj_vertices.size() * 4,
@@ -195,7 +180,7 @@ int main(int argc, char* argv[])
 
     // Setup element array buffer.
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                g_buffer_objects[kGeometryVao][kIndexBuffer]));
+                                g_buffer_objects[kCubeVao][kIndexBuffer]));
     CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                                 sizeof(uint32_t) * obj_faces.size() * 3,
                                 obj_faces.data(), GL_STATIC_DRAW));
@@ -336,26 +321,7 @@ int main(int argc, char* argv[])
         glDepthFunc(GL_LESS);
 
         // Switch to the Geometry VAO.
-        CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kGeometryVao]));
-
-        if (g_menger && g_menger->is_dirty()) {
-            g_menger->generate_geometry(obj_vertices, obj_faces);
-            g_menger->set_clean();
-
-            // Redefine the 
-            CHECK_GL_ERROR(glBindBuffer(
-                    GL_ARRAY_BUFFER,
-                    g_buffer_objects[kGeometryVao][kVertexBuffer]));
-            CHECK_GL_ERROR(
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                 g_buffer_objects[kGeometryVao][kIndexBuffer]));
-            CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER,
-                                        sizeof(float) * obj_vertices.size() * 4,
-                                        obj_vertices.data(), GL_STATIC_DRAW));
-            CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                                        sizeof(uint32_t) * obj_faces.size() * 3,
-                                        obj_faces.data(), GL_STATIC_DRAW));
-        }
+        CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kCubeVao]));
 
         // Compute the projection matrix.
         aspect = static_cast<float>(window_width) / window_height;

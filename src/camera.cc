@@ -67,7 +67,6 @@ void Camera::mm_trans_cam(double screendX, double screendY)
     glm::vec2 amt = glm::normalize(glm::dvec2(screendX, screendY));
     cout << amt[0] << "," << amt[1] << endl;
     glm::vec3 camDir = amt[0] * right_ - amt[1] * up_;
-    cout << camDir << endl;
 
     this->eye_ += camDir * pan_speed;
     update_internal_data();
@@ -115,10 +114,10 @@ void Camera::update_internal_data()
 
 void Camera::update_physics(double timeDiff){
     // Update camera position with velocity + explicit Euler
-    this->eye_ += (float)timeDiff * this->velocity_;
+    // this->eye_ += (float)timeDiff * this->velocity_;
 
     // Update camera velocity from gravity
-    this->velocity_ += glm::vec3(0.0f,-gravity, 0.0f);
+    // this->velocity_ += glm::vec3(0.0f,-gravity, 0.0f);
 
     // Update camera velocity from friction
     // TODO
