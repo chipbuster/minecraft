@@ -21,7 +21,7 @@ constexpr float perlinFade(float t){
 /* coords: coordinates to take noise at. Scaled to be on a 0-1 square
    grads: gradients at corners. grad[0] is at (0,0), grad[1] is at (1,0),
                                 grad[2] is at (0,1), grad[3] is at (1,1) */
-float perlinNoiseSquare(const glm::vec2& coords, const std::vector<glm::vec2>& grad ){
+float perlinNoiseSquare(const glm::vec2& coords, glm::vec2* grad ){
     glm::vec2 from0 = coords - glm::vec2(0,0);
     glm::vec2 from1 = coords - glm::vec2(1,0);
     glm::vec2 from2 = coords - glm::vec2(0,1);
@@ -46,10 +46,71 @@ glm::vec2 circleSample(float theta){
 
 std::vector<float> Chunk::genPerlinNoise(uint64_t seed){
     std::mt19937 ran(seed);
+    std::vector<float> outputs;
 
     // Generate gradients at the corners, edge midpoints, and center
-    glm::vec2 grads[9];
+    // Follow row-major bottom-left to top-right convention (see Terrain.h)
+    glm::vec2 chunkGrads3[9];
     for(int i = 0; i < 9; i++){
-        grads[i] = circleSample(ran());
+        chunkGrads3[i] = circleSample(ran());
     }
+
+    // Generate a higher octave at the corners only
+    glm::vec2 chunkGrads2[4];
+    for(int i = 0; i < 9; i++){
+        chunkGrads2[i] = circleSample(ran());
+    }
+
+    // Generate 16 equispaced points on a (0,2) square.
+    glm::vec2 cellGrads1[4]; // Octave 1 noise
+    float delta = 2 / float(extent - 1);
+    for(int i = 0; i < extent; i++){
+        for(int j = 0; j < extent; j++){
+            // Set grads
+            if(i < extent/2){
+                if(j < extent/2){
+                    // lower-left quadrant
+                    cellGrads1[0] = chunkGrads3[0];
+                    cellGrads1[1] = chunkGrads3[1];
+                    cellGrads1[2] = chunkGrads3[3];
+                    cellGrads1[3] = chunkGrads3[4];
+                }else{
+                    // upper-left quadrant
+                    cellGrads1[0] = chunkGrads3[3];
+                    cellGrads1[1] = chunkGrads3[4];
+                    cellGrads1[2] = chunkGrads3[6];
+                    cellGrads1[3] = chunkGrads3[7];
+                }
+            }else{
+                if(j < extent/2){
+                    // lower-right quadrant
+                    cellGrads1[0] = chunkGrads3[1];
+                    cellGrads1[1] = chunkGrads3[2];
+                    cellGrads1[2] = chunkGrads3[4];
+                    cellGrads1[3] = chunkGrads3[5];
+ 
+                }else{
+                    // upper-right quadrant
+                    cellGrads1[0] = chunkGrads3[4];
+                    cellGrads1[1] = chunkGrads3[5];
+                    cellGrads1[2] = chunkGrads3[7];
+                    cellGrads1[3] = chunkGrads3[8];
+                }
+            }
+
+            // Set coordinates
+            float cellX = i * delta - (int)(i * delta);
+            float cellY = j * delta - (int)(j * delta);
+            glm::vec2 coordsLoOctave(cellX, cellY);
+            glm::vec2 coordsHiOctave(i * delta / 2.0, j * delta / 2.0);
+
+            int index = i * (extent) + j;
+
+            outputs[index] = 0.5 * perlinNoiseSquare(coordsHiOctave, cellGrads1);
+            outputs[index] += perlinNoiseSquare(coordsLoOctave, chunkGrads2);
+            outputs[index] /= 1.5;
+        }
+    }
+
+    return outputs;
 }
