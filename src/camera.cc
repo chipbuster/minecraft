@@ -11,7 +11,7 @@ std::ostream& operator<<(std::ostream& os, const glm::vec3 x);
 namespace {
 float pan_speed = 0.1f;
 float roll_speed = 0.1f;
-float rotation_speed = 0.03f;
+float rotation_speed = 0.05f;
 float zoom_speed = 0.1f;
 }; // namespace
 

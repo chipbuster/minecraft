@@ -320,7 +320,7 @@ int main(int argc, char* argv[])
         // Compute the projection matrix.
         aspect = static_cast<float>(window_width) / window_height;
         glm::mat4 projection_matrix =
-                glm::perspective(glm::radians(45.0f), aspect, 0.0001f, 1000.0f);
+                glm::perspective(glm::radians(90.0f), aspect, 0.0001f, 1000.0f);
 
         // Compute the view matrix
         glm::mat4 view_matrix = g_camera.get_view_matrix();
