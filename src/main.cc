@@ -37,9 +37,9 @@ namespace {
 constexpr float m = 1024.0f;
 constexpr float t = -2.0f;
 }
-std::vector<glm::vec4> floor_vertices = 
-        {{m, t, m, 1.0}, {-m, t, m, 1.0}, {-m, t, -m, 1.0}, {m, t, -m, 1.0}};
-std::vector<glm::uvec3> floor_faces = {{0,2,1},{3,2,0}};
+std::vector<glm::vec4> floor_vertices = {
+        {m, t, m, 1.0}, {-m, t, m, 1.0}, {-m, t, -m, 1.0}, {m, t, -m, 1.0}};
+std::vector<glm::uvec3> floor_faces = {{0, 2, 1}, {3, 2, 0}};
 
 constexpr unsigned int nCubeInstance = 1024;
 
@@ -158,6 +158,13 @@ int main(int argc, char* argv[])
 
     std::vector<glm::vec4> obj_vertices = CubeData::baseVerts;
     std::vector<glm::uvec3> obj_faces = CubeData::baseFaces;
+    std::vector<glm::vec2> offsets;
+    offsets.resize(nCubeInstance);
+
+    // Testing
+    for (size_t i = 0; i < offsets.size(); i++) {
+        offsets[i] = glm::vec2(i, i);
+    }
 
     glm::vec4 min_bounds = glm::vec4(std::numeric_limits<float>::max());
     glm::vec4 max_bounds = glm::vec4(-std::numeric_limits<float>::max());
@@ -180,12 +187,21 @@ int main(int argc, char* argv[])
     // Setup vertex data in a VBO.
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER,
                                 g_buffer_objects[kCubeVao][kVertexBuffer]));
-    // NOTE: We do not send anything right now, we just describe it to OpenGL.
-    CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER,
-                                sizeof(float) * obj_vertices.size() * 4,
-                                obj_vertices.data(), GL_STATIC_DRAW));
+    size_t vertSz = sizeof(float) * obj_vertices.size() * 4;
+    size_t offsetSz = sizeof(float) * offsets.size() * 2;
+    CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER, vertSz + offsetSz, 0,
+                                   GL_STATIC_DRAW));
+    CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, 0, vertSz, obj_vertices.data()));
+    CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz, offsetSz, offsets.data()));
+
+    // Enable vertex positions to be passed in under location 0
     CHECK_GL_ERROR(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0));
     CHECK_GL_ERROR(glEnableVertexAttribArray(0));
+
+    // Enable vertex offsets to be passed in under location 1, instanced
+    CHECK_GL_ERROR(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)vertSz));
+    CHECK_GL_ERROR(glEnableVertexAttribArray(1));
+    CHECK_GL_ERROR(glVertexAttribDivisor(1, 1)); // Per-instance locations
 
     // Setup element array buffer.
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
@@ -339,8 +355,8 @@ int main(int argc, char* argv[])
                 glUniform4fv(light_position_location, 1, &light_position[0]));
 
         // Draw our triangles.
-        CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, obj_faces.size() * 3,
-                                      GL_UNSIGNED_INT, 0));
+        CHECK_GL_ERROR(glDrawElementsInstanced(GL_TRIANGLES, obj_faces.size() * 3,
+                                      GL_UNSIGNED_INT, 0, nCubeInstance));
 
         // FIXME: Render the floor
         // Note: What you need to do is

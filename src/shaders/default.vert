@@ -8,7 +8,7 @@ out vec4 vs_light_direction;
 out vec4 u_pos;
 void main()
 {
-    u_pos = vertex_position;
+    u_pos = vertex_position + vec4(cube_offset.x, 0.0, cube_offset.y, 0.0);
     gl_Position = view * vertex_position;
     vs_light_direction = -gl_Position + view * light_position;
 }
