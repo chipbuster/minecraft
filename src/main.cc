@@ -31,8 +31,15 @@ GLuint g_buffer_objects[kNumVaos]
                        [kNumVbos]; // These will store VBO descriptors.
 
 // Include shader program strings
-#include "shaders_include.cc"
 #include "cubedata.cc"
+#include "shaders_include.cc"
+namespace {
+constexpr float m = 1024.0f;
+constexpr float t = -2.0f;
+}
+std::vector<glm::vec4> floor_vertices = 
+        {{m, t, m, 1.0}, {-m, t, m, 1.0}, {-m, t, -m, 1.0}, {m, t, -m, 1.0}};
+std::vector<glm::uvec3> floor_faces = {{0,2,1},{3,2,0}};
 
 void CreateTriangle(std::vector<glm::vec4>& vertices,
                     std::vector<glm::uvec3>& indices)
@@ -184,19 +191,6 @@ int main(int argc, char* argv[])
     CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                                 sizeof(uint32_t) * obj_faces.size() * 3,
                                 obj_faces.data(), GL_STATIC_DRAW));
-
-    std::vector<glm::vec4> floor_vertices;
-    std::vector<glm::uvec3> floor_faces;
-    {
-        constexpr float m = 1024.0f;
-        constexpr float t = -2.0f;
-        floor_vertices.push_back(glm::vec4(m, t, m, 1.0));
-        floor_vertices.push_back(glm::vec4(-m, t, m, 1.0));
-        floor_vertices.push_back(glm::vec4(-m, t, -m, 1.0));
-        floor_vertices.push_back(glm::vec4(m, t, -m, 1.0));
-        floor_faces.push_back(glm::uvec3(0, 2, 1));
-        floor_faces.push_back(glm::uvec3(3, 2, 0));
-    }
 
     // Switch to VAO for floor and generate VBOs
     CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kFloorVao]));
