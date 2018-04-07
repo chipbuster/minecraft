@@ -43,29 +43,12 @@ std::vector<glm::uvec3> floor_faces = {{0, 2, 1}, {3, 2, 0}};
 
 constexpr unsigned int nCubeInstance = 1024;
 
-void CreateTriangle(std::vector<glm::vec4>& vertices,
-                    std::vector<glm::uvec3>& indices)
-{
-    vertices.push_back(glm::vec4(-0.5f, -0.5f, -0.5f, 1.0f));
-    vertices.push_back(glm::vec4(0.5f, -0.5f, -0.5f, 1.0f));
-    vertices.push_back(glm::vec4(0.0f, 0.5f, -0.5f, 1.0f));
-    indices.push_back(glm::uvec3(0, 1, 2));
-}
-
-// FIXME: Save geometry to OBJ file
-void SaveObj(const std::string& file, const std::vector<glm::vec4>& vertices,
-             const std::vector<glm::uvec3>& indices)
-{
-}
-
 void ErrorCallback(int error, const char* description)
 {
     std::cerr << "GLFW Error: " << description << "\n";
 }
 
 Camera g_camera;
-std::vector<glm::vec4>* verts_ptr = nullptr;
-std::vector<glm::uvec3>* faces_ptr = nullptr;
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
                  int mods)
@@ -158,12 +141,12 @@ int main(int argc, char* argv[])
 
     std::vector<glm::vec4> obj_vertices = CubeData::baseVerts;
     std::vector<glm::uvec3> obj_faces = CubeData::baseFaces;
-    std::vector<glm::vec2> offsets;
+    std::vector<glm::vec3> offsets;
     offsets.resize(nCubeInstance);
 
     // Testing
     for (size_t i = 0; i < offsets.size(); i++) {
-        offsets[i] = glm::vec2(i, i);
+        offsets[i] = glm::vec3(i, i, i);
     }
 
     glm::vec4 min_bounds = glm::vec4(std::numeric_limits<float>::max());
@@ -188,7 +171,7 @@ int main(int argc, char* argv[])
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER,
                                 g_buffer_objects[kCubeVao][kVertexBuffer]));
     size_t vertSz = sizeof(float) * obj_vertices.size() * 4;
-    size_t offsetSz = sizeof(float) * offsets.size() * 2;
+    size_t offsetSz = sizeof(float) * offsets.size() * 3;
     CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER, vertSz + offsetSz, 0,
                                    GL_STATIC_DRAW));
     CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, 0, vertSz, obj_vertices.data()));
@@ -199,7 +182,7 @@ int main(int argc, char* argv[])
     CHECK_GL_ERROR(glEnableVertexAttribArray(0));
 
     // Enable vertex offsets to be passed in under location 1, instanced
-    CHECK_GL_ERROR(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)vertSz));
+    CHECK_GL_ERROR(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)vertSz));
     CHECK_GL_ERROR(glEnableVertexAttribArray(1));
     CHECK_GL_ERROR(glVertexAttribDivisor(1, 1)); // Per-instance locations
 
