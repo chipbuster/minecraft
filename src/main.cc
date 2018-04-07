@@ -41,6 +41,8 @@ std::vector<glm::vec4> floor_vertices =
         {{m, t, m, 1.0}, {-m, t, m, 1.0}, {-m, t, -m, 1.0}, {m, t, -m, 1.0}};
 std::vector<glm::uvec3> floor_faces = {{0,2,1},{3,2,0}};
 
+constexpr unsigned int nCubeInstance = 1024;
+
 void CreateTriangle(std::vector<glm::vec4>& vertices,
                     std::vector<glm::uvec3>& indices)
 {
