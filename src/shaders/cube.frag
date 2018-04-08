@@ -1,8 +1,20 @@
 R"zzz(#version 330 core
 flat in vec4 normal;
 in vec4 light_direction;
+in float seed;
 uniform mat4 view;
 out vec4 fragment_color;
+
+highp float rand(vec2 co)
+{
+    highp float a = 12.9898;
+    highp float b = 78.233;
+    highp float c = 43758.5453;
+    highp float dt= dot(co.xy ,vec2(a,b));
+    highp float sn= mod(dt,3.14);
+    return fract(sin(sn) * c);
+}
+
 void main()
 {
     vec4 color = vec4(1.0,1.0,1.0,1.0); 
@@ -32,6 +44,9 @@ void main()
     if(neg_z > thresh){
         color = vec4(0.0,0.0,1.0,1.0);
     }
+
+    // comment out to see RGB cubes
+    color = vec4(seed,seed,seed,1.0);
 
     float dot_nl = dot(normalize(light_direction), view * normalize(normal));
     dot_nl = clamp(dot_nl, 0.15, 1.0);

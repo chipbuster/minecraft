@@ -47,7 +47,7 @@ class Chunk {
     Chunk(const glm::ivec2& location, int extent, std::mt19937& gen);
 
     std::vector<float> genPerlinNoise() const;
-    std::vector<uint32_t> texSeedMap() const;
+    std::vector<float> texSeedMap() const;
 
     glm::ivec2 loc;     // Coordinates of the bottom-left (x,z) corner
     int extent;        // Number of blocks in the x and z edges.
@@ -69,4 +69,5 @@ class Terrain {
     std::vector<glm::vec3> chunkSurface(glm::ivec2 chunkCoords, glm::vec2 heights);
     glm::ivec2 getChunkCoords(glm::vec3 worldCoords) const;
     std::vector<glm::vec3> getOffsetsForRender(glm::vec3 camCoords, glm::vec2 heights);
+    std::vector<float> getSeedsForRender(glm::vec3 camCoords);
 };

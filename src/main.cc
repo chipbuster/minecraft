@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
 
     // Enable random seeds to pass in location 2, instanced
     CHECK_GL_ERROR(
-            glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)(vertSz + offsetSz)));
+            glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, (void*)(vertSz + offsetSz)));
     CHECK_GL_ERROR(glEnableVertexAttribArray(2));
     CHECK_GL_ERROR(glVertexAttribDivisor(2, 1)); // Per-instance locations
 
@@ -338,13 +338,19 @@ int main(int argc, char* argv[])
             chunkOver = currChunkOver;
             offsets = T.getOffsetsForRender(g_camera.getEye(),
                                             glm::vec2(-5.0, 0.0));
+            seeds = T.getSeedsForRender(g_camera.getEye());
+
             CHECK_GL_ERROR(
                     glBindBuffer(GL_ARRAY_BUFFER,
                                  g_buffer_objects[kCubeVao][kVertexBuffer]));
             size_t vertSz = sizeof(float) * obj_vertices.size() * 4;
             size_t offsetSz = sizeof(float) * nCubeInstance * 3;
+            size_t seedSz = sizeof(float) * seeds.size();
             CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz, offsetSz,
                                            offsets.data()));
+            CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz + offsetSz, seedSz,
+                                   seeds.data()));
+
         }
 
         // Setup some basic window stuff.

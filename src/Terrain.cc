@@ -12,8 +12,9 @@ Chunk::Chunk(const glm::ivec2& location, int extent, std::mt19937& gen)
     this->extent = extent;
 }
 
-constexpr float perlinFade(float t)
+float perlinFade(float t)
 {
+    t = glm::clamp(t, -5.0f,5.0f);
     return 6 * t * t * t * t * t - 15 * t * t * t * t + 10 * t * t * t;
 }
 
@@ -36,7 +37,7 @@ float perlinNoiseSquare(const glm::vec2& coords, glm::vec2* grad)
     float bot = glm::mix(inf0, inf1, coords[0]);
     float mid = glm::mix(bot, top, coords[1]);
 
-    return mid;
+    return perlinFade(mid);
 }
 
 // Generate a point on a circle
@@ -119,13 +120,14 @@ std::vector<float> Chunk::genPerlinNoise() const
     return outputs;
 }
 
-std::vector<uint32_t> Chunk::texSeedMap() const
+std::vector<float> Chunk::texSeedMap() const
 {
     std::mt19937 gen(this->tex_seed);
-    std::vector<uint32_t> output;
+    std::uniform_real_distribution<double> dis(0.0, 1.0);
+    std::vector<float> output;
 
     for (int i = 0; i < extent * extent; i++) {
-        output.push_back(gen());
+        output.push_back(dis(gen));
     }
     return output;
 }
@@ -290,4 +292,35 @@ std::vector<glm::vec3> Terrain::getOffsetsForRender(glm::vec3 camCoords,
     }
 
     return offsets;
+}
+
+
+std::vector<float> Terrain::getSeedsForRender(glm::vec3 camCoords){
+
+    glm::ivec2 center = this->getChunkCoords(camCoords);
+    std::vector<float> seeds;
+    int offsetSize = 5 * this->chunkExtent;
+    seeds.resize(offsetSize * offsetSize);
+
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            glm::ivec2 c(center + glm::ivec2(i - 2, j - 2)); // Chunk's indices
+            std::vector<float> cSeeds = this->getChunk(c).texSeedMap();
+
+            for(const auto & x : cSeeds){
+                std::cout << x << ",";
+            }
+            std::cout << std::endl;
+            // Map into offsets at the right locations
+            for (int cj = 0; cj < this->chunkExtent; cj++) {
+                for (int ci = 0; ci < this->chunkExtent; ci++) {
+                    int ind = ci + i * this->chunkExtent 
+                            + cj * offsetSize
+                            + j * offsetSize * this->chunkExtent;
+                    seeds[ind] = cSeeds[ci + this->chunkExtent * cj];
+                }
+            }
+        }
+    }
+    return seeds;
 }
