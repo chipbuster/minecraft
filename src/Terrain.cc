@@ -12,9 +12,8 @@ Chunk::Chunk(const glm::ivec2& location, int extent, std::mt19937& gen)
     this->extent = extent;
 }
 
-float perlinFade(float t)
+constexpr float perlinFade(float t)
 {
-    t = glm::clamp(t, -5.0f,5.0f);
     return 6 * t * t * t * t * t - 15 * t * t * t * t + 10 * t * t * t;
 }
 
@@ -33,11 +32,11 @@ float perlinNoiseSquare(const glm::vec2& coords, glm::vec2* grad)
     float inf2 = glm::dot(grad[2], from2);
     float inf3 = glm::dot(grad[3], from3);
 
-    float top = glm::mix(inf2, inf3, coords[0]);
-    float bot = glm::mix(inf0, inf1, coords[0]);
-    float mid = glm::mix(bot, top, coords[1]);
+    float top = glm::mix(inf2, inf3, perlinFade(coords[0]));
+    float bot = glm::mix(inf0, inf1, perlinFade(coords[0]));
+    float mid = glm::mix(bot, top, perlinFade(coords[1]));
 
-    return perlinFade(mid);
+    return mid;
 }
 
 // Generate a point on a circle
@@ -307,10 +306,6 @@ std::vector<float> Terrain::getSeedsForRender(glm::vec3 camCoords){
             glm::ivec2 c(center + glm::ivec2(i - 2, j - 2)); // Chunk's indices
             std::vector<float> cSeeds = this->getChunk(c).texSeedMap();
 
-            for(const auto & x : cSeeds){
-                std::cout << x << ",";
-            }
-            std::cout << std::endl;
             // Map into offsets at the right locations
             for (int cj = 0; cj < this->chunkExtent; cj++) {
                 for (int ci = 0; ci < this->chunkExtent; ci++) {
