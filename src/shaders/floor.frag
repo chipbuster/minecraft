@@ -2,8 +2,20 @@ R"zzz(#version 330 core
 flat in vec4 normal;
 in vec4 light_direction;
 in vec4 world_pos;
+in float seed;
 uniform mat4 view;
 out vec4 fragment_color;
+
+highp float rand(vec2 co)
+{
+    highp float a = 12.9898;
+    highp float b = 78.233;
+    highp float c = 43758.5453;
+    highp float dt= dot(co.xy ,vec2(a,b));
+    highp float sn= mod(dt,3.14);
+    return fract(sin(sn) * c);
+}
+
 void main()
 {
     float newX, newZ;

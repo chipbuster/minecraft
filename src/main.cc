@@ -43,7 +43,8 @@ std::vector<glm::vec4> floor_vertices = {
         {m, t, m, 1.0}, {-m, t, m, 1.0}, {-m, t, -m, 1.0}, {m, t, -m, 1.0}};
 std::vector<glm::uvec3> floor_faces = {{0, 2, 1}, {3, 2, 0}};
 
-constexpr unsigned int nCubeInstance = 8000; // 5x5 chunks, 16x16 each, with spares
+constexpr unsigned int nCubeInstance =
+        8000; // 5x5 chunks, 16x16 each, with spares
 
 void ErrorCallback(int error, const char* description)
 {
@@ -148,11 +149,14 @@ int main(int argc, char* argv[])
     std::vector<glm::vec4> obj_vertices = CubeData::baseVerts;
     std::vector<glm::uvec3> obj_faces = CubeData::baseFaces;
     std::vector<glm::vec3> offsets;
+    std::vector<float> seeds;
+    seeds.resize(nCubeInstance);
     offsets.resize(nCubeInstance);
 
     // Testing
     for (size_t i = 0; i < offsets.size(); i++) {
         offsets[i] = glm::vec3(i, i, i);
+        seeds[i] = 1.0;
     }
 
     glm::vec4 min_bounds = glm::vec4(std::numeric_limits<float>::max());
@@ -178,12 +182,15 @@ int main(int argc, char* argv[])
                                 g_buffer_objects[kCubeVao][kVertexBuffer]));
     size_t vertSz = sizeof(float) * obj_vertices.size() * 4;
     size_t offsetSz = sizeof(float) * offsets.size() * 3;
-    CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER, vertSz + offsetSz, 0,
+    size_t seedSz = sizeof(float) * seeds.size();
+    CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER, vertSz + offsetSz + seedSz, 0,
                                 GL_STATIC_DRAW));
     CHECK_GL_ERROR(
             glBufferSubData(GL_ARRAY_BUFFER, 0, vertSz, obj_vertices.data()));
     CHECK_GL_ERROR(
             glBufferSubData(GL_ARRAY_BUFFER, vertSz, offsetSz, offsets.data()));
+    CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz + offsetSz, seedSz,
+                                   seeds.data()));
 
     // Enable vertex positions to be passed in under location 0
     CHECK_GL_ERROR(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0));
@@ -194,6 +201,13 @@ int main(int argc, char* argv[])
             glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)vertSz));
     CHECK_GL_ERROR(glEnableVertexAttribArray(1));
     CHECK_GL_ERROR(glVertexAttribDivisor(1, 1)); // Per-instance locations
+
+    // Enable random seeds to pass in location 2, instanced
+    CHECK_GL_ERROR(
+            glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)(vertSz + offsetSz)));
+    CHECK_GL_ERROR(glEnableVertexAttribArray(2));
+    CHECK_GL_ERROR(glVertexAttribDivisor(2, 1)); // Per-instance locations
+
 
     // Setup element array buffer.
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
@@ -316,12 +330,11 @@ int main(int argc, char* argv[])
     float theta = 0.0f;
     TicTocTimer timer = tic();
 
-    glm::ivec2 chunkOver(-10000,100000);
+    glm::ivec2 chunkOver(-10000, 100000);
     while (!glfwWindowShouldClose(window)) {
         glm::ivec2 currChunkOver = T.getChunkCoords(g_camera.getEye());
         // Copy in new offset data
-        if(currChunkOver != chunkOver)
-        {
+        if (currChunkOver != chunkOver) {
             chunkOver = currChunkOver;
             offsets = T.getOffsetsForRender(g_camera.getEye(),
                                             glm::vec2(-5.0, 0.0));

@@ -5,9 +5,12 @@ uniform mat4 projection;
 uniform mat4 view;
 in vec4 vs_light_direction[];
 in vec4 u_pos[];
+in float vs_seed[];
 flat out vec4 normal;
 out vec4 light_direction;
 out vec4 world_pos;
+out float seed;
+
 void main()
 {
     int n = 0;
@@ -20,6 +23,7 @@ void main()
         light_direction = vs_light_direction[n];
         gl_Position = projection * gl_in[n].gl_Position;
         normal = faceNormal;
+        seed = vs_seed[0];
         world_pos = u_pos[n];
         EmitVertex();
     }
