@@ -221,7 +221,7 @@ std::vector<glm::vec3> Terrain::chunkSurface(glm::ivec2 chunkCoords,
         for (int i = 0; i < this->chunkExtent; i++) {
             noise[i * stride + start] =
                     glm::mix(noise[i * stride + start],
-                             neighborNoise[i * Nstride + Nstart], 0.33333);
+                             neighborNoise[i * Nstride + Nstart], 0.4);
         }
     }
 
@@ -255,27 +255,38 @@ std::vector<glm::vec3> Terrain::getOffsetsForRender(glm::vec3 camCoords,
 {
     glm::ivec2 center = this->getChunkCoords(camCoords);
 
-    // Get visible chunks: a 5x5 set centered on the camera
-    std::vector<glm::ivec2> chunkCoords;
-    for (int i = -2; i <= 2; i++) {
-        for (int j = -2; j <= 2; j++) {
-            chunkCoords.push_back(center + glm::ivec2(i, j));
-        }
-    }
-    std::cout << chunkCoords.size() << std::endl;
-
     // Get surfacemap from each chunk
     std::vector<glm::vec3> offsets;
-    offsets.reserve((5 * this->chunkExtent) * (5 * this->chunkExtent));
+    int offsetSize = 5 * this->chunkExtent;
+    offsets.resize(offsetSize * offsetSize);
 
-    for (const auto& c : chunkCoords) {
-        std::vector<glm::vec3> cOffsets = this->chunkSurface(c, heights);
-        for (auto& offset : cOffsets) {
-            offset += glm::vec3(c.x, 0.0, c.y) * (float)(this->chunkExtent - 1);
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            glm::ivec2 c(center + glm::ivec2(i - 2, j - 2)); // Chunk's indices
+            std::vector<glm::vec3> cOffsets = this->chunkSurface(c, heights);
+            for (auto& offset : cOffsets) {
+                offset += glm::vec3(c.x, 0.0, c.y) *
+                          (float)(this->chunkExtent - 1);
+            }
+
+            // Map into offsets at the right locations
+            for (int cj = 0; cj < this->chunkExtent; cj++) {
+                for (int ci = 0; ci < this->chunkExtent; ci++) {
+                    int ind = ci + i * this->chunkExtent 
+                            + cj * offsetSize
+                            + j * offsetSize * this->chunkExtent;
+                    offsets[ind] = cOffsets[ci + this->chunkExtent * cj];
+                }
+            }
         }
-        offsets.insert(offsets.end(), cOffsets.begin(), cOffsets.end());
-        if (offsets.size() > 8000)
-            break;
+    }
+
+    // Fill seams
+    fixNeighborGaps(offsets, offsetSize);
+
+    // Sinkhole other cubes
+    while (offsets.size() < 8000) {
+        offsets.emplace_back(0.0f, -1000.0f, 0.0f);
     }
 
     return offsets;

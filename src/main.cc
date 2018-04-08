@@ -325,7 +325,6 @@ int main(int argc, char* argv[])
             chunkOver = currChunkOver;
             offsets = T.getOffsetsForRender(g_camera.getEye(),
                                             glm::vec2(-5.0, 0.0));
-            std::cout << "Offsets are " << offsets.size() << std::endl;
             CHECK_GL_ERROR(
                     glBindBuffer(GL_ARRAY_BUFFER,
                                  g_buffer_objects[kCubeVao][kVertexBuffer]));
