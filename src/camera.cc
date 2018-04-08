@@ -1,5 +1,7 @@
 #include "camera.h"
 #include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/string_cast.hpp>
+#include <cmath>
 
 #include <iostream>
 using std::cout;
@@ -29,6 +31,12 @@ glm::mat4 Camera::get_view_matrix() const
 void Camera::lm_rotate_cam(double screendX, double screendY)
 {
     glm::vec2 amt = glm::normalize(glm::dvec2(screendX, screendY));
+
+    // The input from screen space is nonsensical. Ignore it.
+    if(std::isnan(glm::length(amt))){
+        return;
+    }
+
     glm::vec3 camAxis = amt[0] * right_ - amt[1] * up_;
     glm::vec3 rotAxis = glm::cross(-camAxis, this->look_);
 
@@ -45,7 +53,7 @@ void Camera::lm_rotate_cam(double screendX, double screendY)
         );
     }   
 
-    assert(abs(glm::dot(this->up_, this->look_)) < 0.01);
+    assert(fabs(glm::dot(this->up_, this->look_)) < 0.01);
 
     update_internal_data();
 }
