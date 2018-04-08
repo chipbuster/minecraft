@@ -41,13 +41,12 @@ class Chunk {
     uint32_t tex_seed; // Seed used to determine textures
     uint32_t per_seed; // Seed used to determine heights (via perlin noise)
 
-    std::vector<float> genPerlinNoise(uint64_t seed) const;
     std::vector<int> clampedEdges;
 
     public:
     Chunk(const glm::ivec2& location, int extent, std::mt19937& gen);
 
-    std::vector<float> heightMap(float minH, float maxH) const;
+    std::vector<float> genPerlinNoise() const;
     std::vector<uint32_t> texSeedMap() const;
 
     glm::ivec2 loc;     // Coordinates of the bottom-left (x,z) corner

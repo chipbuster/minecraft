@@ -45,9 +45,9 @@ glm::vec2 circleSample(float theta)
     return glm::vec2(cos(theta), sin(theta));
 }
 
-std::vector<float> Chunk::genPerlinNoise(uint64_t seed) const
+std::vector<float> Chunk::genPerlinNoise() const
 {
-    std::mt19937 ran(seed);
+    std::mt19937 ran(per_seed);
     std::vector<float> outputs;
     outputs.resize(extent * extent);
 
@@ -117,17 +117,6 @@ std::vector<float> Chunk::genPerlinNoise(uint64_t seed) const
     }
 
     return outputs;
-}
-
-std::vector<float> Chunk::heightMap(float minHeight, float maxHeight) const
-{
-    float delta = maxHeight - minHeight;
-    std::vector<float> noise = this->genPerlinNoise(this->per_seed);
-
-    for (auto& elem : noise) {
-        elem = delta * elem + minHeight;
-    }
-    return noise;
 }
 
 std::vector<uint32_t> Chunk::texSeedMap() const
