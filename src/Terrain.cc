@@ -148,15 +148,16 @@ const Chunk& Terrain::getChunk(glm::ivec2 chunkCoords)
 void fixNeighborGaps(std::vector<glm::vec3>& surfaceMap, int chunkExtent)
 {
     for (int i = (int)surfaceMap.size() - 1; i >= 0; i--) {
-        std::vector<int> neighbors = {i + 1, i - 1,
-            i + chunkExtent, i - chunkExtent};
+        std::vector<int> neighbors = {i + 1, i - 1, i + chunkExtent,
+                                      i - chunkExtent};
 
         for (int j : neighbors) {
             if (j < chunkExtent * chunkExtent && j > 0) {
                 // This neighbor is in-bounds. How bad is the gap?
                 float gapSize =
                         floor(surfaceMap[i].y - surfaceMap[j].y - 0.001);
-                if(gapSize <= 0.0) continue;
+                if (gapSize <= 0.0)
+                    continue;
                 // For each unit of gapSize, add a patch
                 for (int k = 1; k <= gapSize; k++) {
                     surfaceMap.push_back(glm::vec3(surfaceMap[i].x,
@@ -172,20 +173,73 @@ std::vector<glm::vec3> Terrain::chunkSurface(glm::ivec2 chunkCoords,
                                              glm::vec2 heights)
 {
     const Chunk& C = this->getChunk(chunkCoords);
-    std::vector<float> heightMap = C.heightMap(heights.x, heights.y);
+    std::vector<float> noise = C.genPerlinNoise();
+
+    // Interpolate edge squares with neighbor's edge square to eliminate seaming
+    for (int z = 0; z < 4; z++) {
+        std::vector<float> neighborNoise;
+        int start, Nstart;
+        int stride, Nstride;
+
+        switch (z) {
+            case 0: // Bottom edge
+                start = 0;
+                Nstart = this->chunkExtent * this->chunkExtent -
+                         this->chunkExtent;
+
+                stride = 1;
+                Nstride = 1;
+                neighborNoise = this->getChunk(chunkCoords + glm::ivec2(0, -1))
+                                        .genPerlinNoise();
+                break;
+            case 1: // Left edge
+                start = 0;
+                Nstart = this->chunkExtent;
+                stride = this->chunkExtent;
+                Nstride = this->chunkExtent;
+                neighborNoise = this->getChunk(chunkCoords + glm::ivec2(-1, 0))
+                                        .genPerlinNoise();
+                break;
+            case 2: // Right Edge
+                start = this->chunkExtent - 1;
+                Nstart = 0;
+                stride = this->chunkExtent;
+                Nstride = this->chunkExtent;
+                neighborNoise = this->getChunk(chunkCoords + glm::ivec2(1, 0))
+                                        .genPerlinNoise();
+                break;
+            case 3: // Top edge
+                start = this->chunkExtent * this->chunkExtent -
+                        this->chunkExtent;
+                stride = 1;
+                Nstart = 0;
+                Nstride = 1;
+                neighborNoise = this->getChunk(chunkCoords + glm::ivec2(0, 1))
+                                        .genPerlinNoise();
+                break;
+        }
+        for (int i = 0; i < this->chunkExtent; i++) {
+            noise[i * stride + start] =
+                    glm::mix(noise[i * stride + start],
+                             neighborNoise[i * Nstride + Nstart], 0.33333);
+        }
+    }
+
+    // Generate surface Map
     std::vector<glm::vec3> surfaceMap;
     surfaceMap.resize(this->chunkExtent * this->chunkExtent);
+    float delta = heights.y - heights.x;
 
     for (int i = 0; i < this->chunkExtent; i++) {
         for (int j = 0; j < this->chunkExtent; j++) {
             int index = i + this->chunkExtent * j;
-            glm::vec3 coords((float)C.loc.x + (float)i, round(heightMap[index]),
+            glm::vec3 coords((float)C.loc.x + (float)i,
+                             round(noise[index] * delta + heights.x),
                              (float)C.loc.y + (float)j);
             surfaceMap[index] = coords;
         }
     }
 
-    fixNeighborGaps(surfaceMap, this->chunkExtent);
     return surfaceMap;
 }
 
@@ -203,20 +257,9 @@ std::vector<glm::vec3> Terrain::getOffsetsForRender(glm::vec3 camCoords,
 
     // Get visible chunks: a 5x5 set centered on the camera
     std::vector<glm::ivec2> chunkCoords;
-    chunkCoords.push_back(center + glm::ivec2(0, 0));
-    chunkCoords.push_back(center + glm::ivec2(0, 1));
-    chunkCoords.push_back(center + glm::ivec2(0, -1));
-    chunkCoords.push_back(center + glm::ivec2(1, 0));
-    chunkCoords.push_back(center + glm::ivec2(-1, 0));
-    chunkCoords.push_back(center + glm::ivec2(-1, 1));
-    chunkCoords.push_back(center + glm::ivec2(-1, -1));
-    chunkCoords.push_back(center + glm::ivec2(1, -1));
-    chunkCoords.push_back(center + glm::ivec2(1, 1));
     for (int i = -2; i <= 2; i++) {
         for (int j = -2; j <= 2; j++) {
-            if (abs(i) == 2 || abs(j) == 2) {
-                chunkCoords.push_back(center + glm::ivec2(i, j));
-            }
+            chunkCoords.push_back(center + glm::ivec2(i, j));
         }
     }
     std::cout << chunkCoords.size() << std::endl;
@@ -231,7 +274,7 @@ std::vector<glm::vec3> Terrain::getOffsetsForRender(glm::vec3 camCoords,
             offset += glm::vec3(c.x, 0.0, c.y) * (float)(this->chunkExtent - 1);
         }
         offsets.insert(offsets.end(), cOffsets.begin(), cOffsets.end());
-        if (offsets.size() > 6400)
+        if (offsets.size() > 8000)
             break;
     }
 
