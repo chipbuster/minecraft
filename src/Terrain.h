@@ -1,3 +1,6 @@
+#ifndef TERRAIN_H
+#define TERRAIN_H
+
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -71,3 +74,5 @@ class Terrain {
     std::vector<glm::vec3> getOffsetsForRender(glm::vec3 camCoords, glm::vec2 heights);
     std::vector<float> getSeedsForRender(glm::vec3 camCoords);
 };
+
+#endif

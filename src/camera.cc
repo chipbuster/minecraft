@@ -82,10 +82,20 @@ void Camera::mm_trans_cam(double screendX, double screendY)
 
 void Camera::ws_walk_cam(int direction)
 {
-    if (direction > 0) {
-        eye_ += zoom_speed * look_;
-    } else {
-        eye_ -= zoom_speed * look_;
+    if(physics_mode){
+        if (direction > 0){
+            velocity_ += look_;
+        }
+        else{
+            velocity_ -= look_;
+        }
+    }
+    else{
+        if (direction > 0) {
+            eye_ += zoom_speed * look_;
+        } else {
+            eye_ -= zoom_speed * look_;
+        }
     }
     update_internal_data();
 }
@@ -120,15 +130,44 @@ void Camera::update_internal_data()
     this->center_ = eye_ + camera_distance_ * look_;
 }
 
-void Camera::update_physics(double timeDiff){
-    // Update camera position with velocity + explicit Euler
-    // this->eye_ += (float)timeDiff * this->velocity_;
-
+void Camera::update_physics(double timestep, const Chunk& C, const std::vector<glm::vec3>& cubes){
+    constexpr float camH = 1.75;
+    constexpr float camR = 0.5;
     // Update camera velocity from gravity
-    // this->velocity_ += glm::vec3(0.0f,-gravity, 0.0f);
+    this->velocity_ += glm::vec3(0.0f,-gravity, 0.0f);
 
     // Update camera velocity from friction
-    // TODO
+    this->velocity_ *= 0.8;
+
+    // Update camera velocity from collisions
+    std::vector<glm::vec3> collisions; // Cube indices that we might collide with
+    
+    // Coarse detection
+    constexpr float coarseRadius = 1.5 + sqrt(camR * camR + camH * camH);
+    for(const auto& c : cubes){
+        if(glm::length(c - this->eye_) < coarseRadius){
+            collisions.push_back(c);
+        }
+    }
+    // Fine detection: floor
+    for(const auto& c : collisions){
+        float eyeY = this->eye_.y;
+
+        // TODO: Check to make sure cube is really below camera
+        if(eyeY - camH < c.y){
+            this->velocity_.y = 0.0;
+            std::cout << "Eye at" << eyeY << " collision on " << glm::to_string(c) << std::endl;
+        }
+    }
+
+    // Fine detecion: walls
+
+
+    // Update camera position with velocity + explicit Euler
+    this->eye_ += (float)timestep * this->velocity_;
+
+    // Calc!
+    update_internal_data();
 }
 
 glm::vec3 Camera::getEye() const{

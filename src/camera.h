@@ -2,6 +2,7 @@
 #define CAMERA_H
 
 #include <glm/glm.hpp>
+#include "Terrain.h"
 
 class Camera {
 public:
@@ -11,7 +12,8 @@ public:
     void mm_trans_cam(double screenX, double screenY);
     void ws_walk_cam(int direction);
     void ad_strafe_cam(int direction);
-    void update_physics(double timestep);
+    void update_physics(double timestep, const Chunk& C, const std::vector<glm::vec3>& cubes);
+    bool physics_mode = true;
 
     glm::vec3 getEye() const;
 
@@ -22,7 +24,7 @@ private:
     glm::vec3 look_ = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 up_ = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 true_up_ = glm::vec3(0.0f,1.0f,0.0f);
-    glm::vec3 eye_ = glm::vec3(0.0f, 0.0f, camera_distance_);
+    glm::vec3 eye_ = glm::vec3(0.0f, 4.0f, camera_distance_);
     glm::vec3 right_;
     glm::vec3 center_;
     glm::mat4 cam_to_world_;

@@ -203,11 +203,10 @@ int main(int argc, char* argv[])
     CHECK_GL_ERROR(glVertexAttribDivisor(1, 1)); // Per-instance locations
 
     // Enable random seeds to pass in location 2, instanced
-    CHECK_GL_ERROR(
-            glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, (void*)(vertSz + offsetSz)));
+    CHECK_GL_ERROR(glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0,
+                                         (void*)(vertSz + offsetSz)));
     CHECK_GL_ERROR(glEnableVertexAttribArray(2));
     CHECK_GL_ERROR(glVertexAttribDivisor(2, 1)); // Per-instance locations
-
 
     // Setup element array buffer.
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
@@ -348,9 +347,8 @@ int main(int argc, char* argv[])
             size_t seedSz = sizeof(float) * seeds.size();
             CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz, offsetSz,
                                            offsets.data()));
-            CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz + offsetSz, seedSz,
-                                   seeds.data()));
-
+            CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz + offsetSz,
+                                           seedSz, seeds.data()));
         }
 
         // Setup some basic window stuff.
@@ -412,7 +410,8 @@ int main(int argc, char* argv[])
 
         // Let camera velocities decay
         double timeDiff = toc(&timer);
-        g_camera.update_physics(timeDiff);
+        g_camera.update_physics(
+                timeDiff, T.getChunk(T.getChunkCoords(g_camera.getEye())), offsets);
         std::cout << '\r';
         std::cout << "FPS = " << 1.0 / timeDiff;
 
