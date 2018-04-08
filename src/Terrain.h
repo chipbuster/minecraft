@@ -42,6 +42,7 @@ class Chunk {
     uint32_t per_seed; // Seed used to determine heights (via perlin noise)
 
     std::vector<float> genPerlinNoise(uint64_t seed) const;
+    std::vector<int> clampedEdges;
 
     public:
     Chunk(const glm::ivec2& location, int extent, std::mt19937& gen);

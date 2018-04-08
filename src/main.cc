@@ -330,7 +330,7 @@ int main(int argc, char* argv[])
                     glBindBuffer(GL_ARRAY_BUFFER,
                                  g_buffer_objects[kCubeVao][kVertexBuffer]));
             size_t vertSz = sizeof(float) * obj_vertices.size() * 4;
-            size_t offsetSz = sizeof(float) * offsets.size() * 3;
+            size_t offsetSz = sizeof(float) * nCubeInstance * 3;
             CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz, offsetSz,
                                            offsets.data()));
         }
@@ -395,6 +395,8 @@ int main(int argc, char* argv[])
         // Let camera velocities decay
         double timeDiff = toc(&timer);
         g_camera.update_physics(timeDiff);
+        std::cout << '\r';
+        std::cout << "FPS = " << 1.0 / timeDiff;
 
         // Poll and swap.
         glfwPollEvents();

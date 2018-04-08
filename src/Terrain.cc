@@ -156,24 +156,47 @@ const Chunk& Terrain::getChunk(glm::ivec2 chunkCoords)
     }
 }
 
+void fixNeighborGaps(std::vector<glm::vec3>& surfaceMap, int chunkExtent)
+{
+    for (int i = (int)surfaceMap.size() - 1; i >= 0; i--) {
+        std::vector<int> neighbors = {i + 1, i - 1,
+            i + chunkExtent, i - chunkExtent};
+
+        for (int j : neighbors) {
+            if (j < chunkExtent * chunkExtent && j > 0) {
+                // This neighbor is in-bounds. How bad is the gap?
+                float gapSize =
+                        floor(surfaceMap[i].y - surfaceMap[j].y - 0.001);
+                if(gapSize <= 0.0) continue;
+                // For each unit of gapSize, add a patch
+                for (int k = 1; k <= gapSize; k++) {
+                    surfaceMap.push_back(glm::vec3(surfaceMap[i].x,
+                                                   surfaceMap[i].y - (float)k,
+                                                   surfaceMap[i].z));
+                }
+            }
+        }
+    }
+}
+
 std::vector<glm::vec3> Terrain::chunkSurface(glm::ivec2 chunkCoords,
                                              glm::vec2 heights)
 {
     const Chunk& C = this->getChunk(chunkCoords);
     std::vector<float> heightMap = C.heightMap(heights.x, heights.y);
-    std::vector<glm::vec3> surfaceMap; surfaceMap.resize(this->chunkExtent * this->chunkExtent);
+    std::vector<glm::vec3> surfaceMap;
+    surfaceMap.resize(this->chunkExtent * this->chunkExtent);
 
-    // TODO
     for (int i = 0; i < this->chunkExtent; i++) {
         for (int j = 0; j < this->chunkExtent; j++) {
             int index = i + this->chunkExtent * j;
-            glm::vec3 coords((float)C.loc.x + (float)i
-                            , round(heightMap[index])
-                            , (float)C.loc.y + (float)j);
+            glm::vec3 coords((float)C.loc.x + (float)i, round(heightMap[index]),
+                             (float)C.loc.y + (float)j);
             surfaceMap[index] = coords;
         }
     }
 
+    fixNeighborGaps(surfaceMap, this->chunkExtent);
     return surfaceMap;
 }
 
@@ -184,28 +207,44 @@ glm::ivec2 Terrain::getChunkCoords(glm::vec3 coords) const
                       (int)coords.z / this->chunkExtent);
 }
 
-std::vector<glm::vec3> Terrain::getOffsetsForRender(glm::vec3 camCoords, glm::vec2 heights)
+std::vector<glm::vec3> Terrain::getOffsetsForRender(glm::vec3 camCoords,
+                                                    glm::vec2 heights)
 {
     glm::ivec2 center = this->getChunkCoords(camCoords);
 
     // Get visible chunks: a 5x5 set centered on the camera
     std::vector<glm::ivec2> chunkCoords;
+    chunkCoords.push_back(center + glm::ivec2(0, 0));
+    chunkCoords.push_back(center + glm::ivec2(0, 1));
+    chunkCoords.push_back(center + glm::ivec2(0, -1));
+    chunkCoords.push_back(center + glm::ivec2(1, 0));
+    chunkCoords.push_back(center + glm::ivec2(-1, 0));
+    chunkCoords.push_back(center + glm::ivec2(-1, 1));
+    chunkCoords.push_back(center + glm::ivec2(-1, -1));
+    chunkCoords.push_back(center + glm::ivec2(1, -1));
+    chunkCoords.push_back(center + glm::ivec2(1, 1));
     for (int i = -2; i <= 2; i++) {
         for (int j = -2; j <= 2; j++) {
-            chunkCoords.push_back(center + glm::ivec2(i, j));
+            if (abs(i) == 2 || abs(j) == 2) {
+                chunkCoords.push_back(center + glm::ivec2(i, j));
+            }
         }
     }
+    std::cout << chunkCoords.size() << std::endl;
 
     // Get surfacemap from each chunk
     std::vector<glm::vec3> offsets;
     offsets.reserve((5 * this->chunkExtent) * (5 * this->chunkExtent));
 
-    for(const auto& c : chunkCoords){
+    for (const auto& c : chunkCoords) {
         std::vector<glm::vec3> cOffsets = this->chunkSurface(c, heights);
-        for(auto& offset : cOffsets){
+        for (auto& offset : cOffsets) {
             offset += glm::vec3(c.x, 0.0, c.y) * (float)(this->chunkExtent - 1);
         }
         offsets.insert(offsets.end(), cOffsets.begin(), cOffsets.end());
+        if (offsets.size() > 6400)
+            break;
     }
+
     return offsets;
 }
