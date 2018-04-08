@@ -46,7 +46,7 @@ void main()
     }
 
     // comment out to see RGB cubes
-    color = vec4(seed,seed,seed,1.0);
+    //color = vec4(seed,seed,seed,1.0);
 
     float dot_nl = dot(normalize(light_direction), view * normalize(normal));
     dot_nl = clamp(dot_nl, 0.15, 1.0);

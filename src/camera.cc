@@ -1,6 +1,6 @@
 #include "camera.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/string_cast.hpp>
 
@@ -133,7 +133,7 @@ void Camera::update_internal_data()
 }
 
 enum CollisionType {
-    NONE = 0, 
+    NONE = 0,
     CEIL = 1,
     FLOOR = 2,
     MINX = 4,
@@ -143,16 +143,21 @@ enum CollisionType {
     WALL = 64
 };
 inline CollisionType operator|(CollisionType a, CollisionType b)
-{return static_cast<CollisionType>(static_cast<int>(a) | static_cast<int>(b));}
+{
+    return static_cast<CollisionType>(static_cast<int>(a) |
+                                      static_cast<int>(b));
+}
 inline CollisionType operator&(CollisionType a, CollisionType b)
-{return static_cast<CollisionType>(static_cast<int>(a) & static_cast<int>(b));}
+{
+    return static_cast<CollisionType>(static_cast<int>(a) &
+                                      static_cast<int>(b));
+}
 
-
-
+constexpr float eps = 0.10;
+constexpr float camH = 1.75;
+constexpr float camR = 0.49;
 CollisionType collide(const glm::vec3& location, const glm::vec3& Cmin)
 {
-    constexpr float camH = 1.75;
-    constexpr float camR = 0.5;
 
     float minX = Cmin.x;
     float maxX = minX + 1.0;
@@ -170,43 +175,54 @@ CollisionType collide(const glm::vec3& location, const glm::vec3& Cmin)
 
     CollisionType ct = NONE;
 
-
-    float eps = 0.10;
-
-    bool MaxYCross = camBot < maxY + eps && camTop > maxY; // Camera crosses maxY
-    bool MinYCross = camTop > minY - eps && camBot < minY; // Camera crosses minY
-    bool MaxXCross = camMinX < maxX + eps && camMaxX > maxX;
-    bool MaxZCross = camMinZ < maxZ + eps && camMaxZ > maxZ;
-    bool MinXCross = camMaxX > minX - eps && camMinX < minX;
-    bool MinZCross = camMaxZ > minZ - eps && camMinZ < minZ;
+    bool MaxYCross =
+            camBot < maxY + eps && camTop > maxY; // Camera crosses maxY
+    bool MinYCross =
+            camTop > minY - eps && camBot < minY; // Camera crosses minY
+    bool MaxXCross = camMinX < maxX && camMaxX > maxX;
+    bool MaxZCross = camMinZ < maxZ && camMaxZ > maxZ;
+    bool MinXCross = camMaxX > minX && camMinX < minX;
+    bool MinZCross = camMaxZ > minZ && camMinZ < minZ;
 
     // Cylinder is inbounds if it crosses an edge or is entirely within the cell
-    bool inBoundsY = MaxYCross || MinYCross || camBot > minY && camTop < maxY;
-    bool inBoundsX = MaxXCross || MinXCross || camMaxX < maxX && camMinX > minX;
-    bool inBoundsZ = MaxZCross || MinZCross || camMaxZ < maxZ && camMinZ > minZ;
+    bool inBoundsY = camBot < maxY && camBot > minY ||
+                     camTop < maxY && camTop > minY ||
+                     camBot > minY && camTop < maxY;
+    bool inBoundsX = camMinX < maxX && camMinX > minX ||
+                     camMaxX < maxX && camMaxX > minX ||
+                     camMaxX < maxX && camMinX > minX;
+    bool inBoundsZ = camMinZ < maxZ && camMinZ > minZ ||
+                     camMaxZ < maxZ && camMaxZ > minZ ||
+                     camMaxZ < maxZ && camMinZ > minZ;
 
-    if(MaxYCross && inBoundsX && inBoundsZ){
-        cout << "Collision of " << glm::to_string(location) << " with " << glm::to_string(Cmin) << " of type FLOOR" <<std::endl;
+    if (MaxYCross && inBoundsX && inBoundsZ) {
+        cout << "Collision of " << glm::to_string(location) << " with "
+             << glm::to_string(Cmin) << " of type FLOOR" << std::endl;
         ct = ct | FLOOR;
     }
-    if(MinYCross && inBoundsX && inBoundsZ){
-        cout << "Collision of " << glm::to_string(location) << " with " << glm::to_string(Cmin) << " of type CEIL"<< std::endl;
+    if (MinYCross && inBoundsX && inBoundsZ) {
+        cout << "Collision of " << glm::to_string(location) << " with "
+             << glm::to_string(Cmin) << " of type CEIL" << std::endl;
         ct = ct | CEIL;
     }
-    if(MaxXCross && inBoundsY && inBoundsZ){
-        cout << "Collision of " << glm::to_string(location) << " with " << glm::to_string(Cmin) << " of type MINX" <<std::endl;
+    if (MaxXCross && inBoundsY && inBoundsZ) {
+        cout << "Collision of " << glm::to_string(location) << " with "
+             << glm::to_string(Cmin) << " of type MINX" << std::endl;
         ct = ct | MINX;
     }
-    if(MinXCross && inBoundsY && inBoundsZ){
-        cout << "Collision of " << glm::to_string(location) << " with " << glm::to_string(Cmin) << " of type MAXX" <<std::endl;
+    if (MinXCross && inBoundsY && inBoundsZ) {
+        cout << "Collision of " << glm::to_string(location) << " with "
+             << glm::to_string(Cmin) << " of type MAXX" << std::endl;
         ct = ct | MAXX;
     }
-    if(MaxXCross && inBoundsY && inBoundsX){
-        cout << "Collision of " << glm::to_string(location) << " with " << glm::to_string(Cmin) << " of type MINZ" <<std::endl;
+    if (MaxZCross && inBoundsY && inBoundsX) {
+        cout << "Collision of " << glm::to_string(location) << " with "
+             << glm::to_string(Cmin) << " of type MINZ" << std::endl;
         ct = ct | MINZ;
     }
-    if(MinXCross && inBoundsY && inBoundsX){
-        cout << "Collision of " << glm::to_string(location) << " with " << glm::to_string(Cmin) << " of type MAXZ"<< std::endl;
+    if (MinZCross && inBoundsY && inBoundsX) {
+        cout << "Collision of " << glm::to_string(location) << " with "
+             << glm::to_string(Cmin) << " of type MAXZ" << std::endl;
         ct = ct | MAXZ;
     }
     return ct;
@@ -240,31 +256,34 @@ void Camera::update_physics(double timestep, const Chunk& C,
     for (const auto& c : coarseCollisions) {
         CollisionType coll = collide(this->eye_, c);
 
-        if(coll & FLOOR){
+        if (coll & FLOOR) {
+            // If we are falling, make sure we don't fall too far
+            if(this->velocity_.y < -10){
+                this->eye_.y = c.y + camH + 1.0 + eps / 2;
+            }
             this->velocity_.y = max(0.0f, this->velocity_.y);
             allColl = allColl | FLOOR;
         }
-        if(coll & CEIL){
+        if (coll & CEIL) {
             this->velocity_.y = min(0.0f, this->velocity_.y);
             allColl = allColl | CEIL;
         }
-        if(coll & MINX){
+        if (coll & MINX) {
             this->velocity_.x = max(0.0f, this->velocity_.x);
             allColl = allColl | MINX;
         }
-        if(coll & MAXX){
+        if (coll & MAXX) {
             this->velocity_.x = min(0.0f, this->velocity_.x);
             allColl = allColl | MAXX;
         }
-        if(coll & MINZ){
+        if (coll & MINZ) {
             this->velocity_.z = max(0.0f, this->velocity_.z);
             allColl = allColl | FLOOR;
         }
-        if(coll & MAXZ){
+        if (coll & MAXZ) {
             this->velocity_.z = min(0.0f, this->velocity_.z);
             allColl = allColl | FLOOR;
         }
-
     }
 
     // Update camera position with velocity + explicit Euler
