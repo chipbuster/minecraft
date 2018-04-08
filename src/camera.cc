@@ -122,3 +122,7 @@ void Camera::update_physics(double timeDiff){
     // Update camera velocity from friction
     // TODO
 }
+
+glm::vec3 Camera::getEye() const{
+    return eye_;
+}

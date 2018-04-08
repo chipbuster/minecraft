@@ -40,26 +40,33 @@
 class Chunk {
     uint32_t tex_seed; // Seed used to determine textures
     uint32_t per_seed; // Seed used to determine heights (via perlin noise)
-    glm::vec2 loc;     // Coordinates of the bottom-left (x,z) corner
-    int extent;        // Number of blocks in the x and z edges.
-                       // both values should be powers of two.
 
-    std::vector<float> genPerlinNoise(uint64_t seed);
+    std::vector<float> genPerlinNoise(uint64_t seed) const;
 
     public:
-    Chunk(const glm::vec2& location, int extent, std::mt19937& gen);
+    Chunk(const glm::ivec2& location, int extent, std::mt19937& gen);
 
-    std::vector<float> heightMap() const;
-    std::vector<uint64_t> texSeedMap() const;
+    std::vector<float> heightMap(float minH, float maxH) const;
+    std::vector<uint32_t> texSeedMap() const;
+
+    glm::ivec2 loc;     // Coordinates of the bottom-left (x,z) corner
+    int extent;        // Number of blocks in the x and z edges.
+                       // both values should be powers of two.
 };
 
 //
 class Terrain {
-    std::unordered_map<glm::vec2, Chunk, std::hash<glm::vec2>,
-                       std::equal_to<glm::vec2>>
+    std::unordered_map<glm::ivec2, Chunk, std::hash<glm::ivec2>,
+                       std::equal_to<glm::ivec2>>
             chunkMap;
-    uint64_t seed;
+    std::mt19937 gen;
+    int chunkExtent = 16;
 
     public:
+    Terrain(uint64_t seed) : gen(seed) {}
+    const Chunk& getChunk(glm::ivec2);
 
+    std::vector<glm::vec3> chunkSurface(glm::ivec2 chunkCoords, glm::vec2 heights);
+    glm::ivec2 getChunkCoords(glm::vec3 worldCoords) const;
+    std::vector<glm::vec3> getOffsetsForRender(glm::vec3 camCoords, glm::vec2 heights);
 };

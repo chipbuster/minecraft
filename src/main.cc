@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -13,6 +14,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <debuggl.h>
+#include "Terrain.h"
 #include "camera.h"
 #include "tictoc.h"
 
@@ -35,13 +37,13 @@ GLuint g_buffer_objects[kNumVaos]
 #include "shaders_include.cc"
 namespace {
 constexpr float m = 1024.0f;
-constexpr float t = -2.0f;
+constexpr float t = -10.0f;
 }
 std::vector<glm::vec4> floor_vertices = {
         {m, t, m, 1.0}, {-m, t, m, 1.0}, {-m, t, -m, 1.0}, {m, t, -m, 1.0}};
 std::vector<glm::uvec3> floor_faces = {{0, 2, 1}, {3, 2, 0}};
 
-constexpr unsigned int nCubeInstance = 1024;
+constexpr unsigned int nCubeInstance = 6400; // 5x5 chunks, 16x16 each
 
 void ErrorCallback(int error, const char* description)
 {
@@ -116,6 +118,10 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     glfwSetErrorCallback(ErrorCallback);
 
+    // Set up Terrain
+    srand((unsigned)time(0));
+    Terrain T(rand());
+
     // Ask an OpenGL 4.1 core profile context
     // It is required on OSX and non-NVIDIA Linux
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -173,16 +179,19 @@ int main(int argc, char* argv[])
     size_t vertSz = sizeof(float) * obj_vertices.size() * 4;
     size_t offsetSz = sizeof(float) * offsets.size() * 3;
     CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER, vertSz + offsetSz, 0,
-                                   GL_STATIC_DRAW));
-    CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, 0, vertSz, obj_vertices.data()));
-    CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz, offsetSz, offsets.data()));
+                                GL_STATIC_DRAW));
+    CHECK_GL_ERROR(
+            glBufferSubData(GL_ARRAY_BUFFER, 0, vertSz, obj_vertices.data()));
+    CHECK_GL_ERROR(
+            glBufferSubData(GL_ARRAY_BUFFER, vertSz, offsetSz, offsets.data()));
 
     // Enable vertex positions to be passed in under location 0
     CHECK_GL_ERROR(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0));
     CHECK_GL_ERROR(glEnableVertexAttribArray(0));
 
     // Enable vertex offsets to be passed in under location 1, instanced
-    CHECK_GL_ERROR(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)vertSz));
+    CHECK_GL_ERROR(
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)vertSz));
     CHECK_GL_ERROR(glEnableVertexAttribArray(1));
     CHECK_GL_ERROR(glVertexAttribDivisor(1, 1)); // Per-instance locations
 
@@ -306,7 +315,26 @@ int main(int argc, char* argv[])
     float aspect = 0.0f;
     float theta = 0.0f;
     TicTocTimer timer = tic();
+
+    glm::ivec2 chunkOver(-10000,100000);
     while (!glfwWindowShouldClose(window)) {
+        glm::ivec2 currChunkOver = T.getChunkCoords(g_camera.getEye());
+        // Copy in new offset data
+        if(currChunkOver != chunkOver)
+        {
+            chunkOver = currChunkOver;
+            offsets = T.getOffsetsForRender(g_camera.getEye(),
+                                            glm::vec2(-5.0, 0.0));
+            std::cout << "Offsets are " << offsets.size() << std::endl;
+            CHECK_GL_ERROR(
+                    glBindBuffer(GL_ARRAY_BUFFER,
+                                 g_buffer_objects[kCubeVao][kVertexBuffer]));
+            size_t vertSz = sizeof(float) * obj_vertices.size() * 4;
+            size_t offsetSz = sizeof(float) * offsets.size() * 3;
+            CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, vertSz, offsetSz,
+                                           offsets.data()));
+        }
+
         // Setup some basic window stuff.
         glfwGetFramebufferSize(window, &window_width, &window_height);
         glViewport(0, 0, window_width, window_height);
@@ -321,7 +349,7 @@ int main(int argc, char* argv[])
         // Compute the projection matrix.
         aspect = static_cast<float>(window_width) / window_height;
         glm::mat4 projection_matrix =
-                glm::perspective(glm::radians(90.0f), aspect, 0.0001f, 1000.0f);
+                glm::perspective(glm::radians(90.0f), aspect, 0.0001f, 512.0f);
 
         // Compute the view matrix
         glm::mat4 view_matrix = g_camera.get_view_matrix();
@@ -338,8 +366,9 @@ int main(int argc, char* argv[])
                 glUniform4fv(light_position_location, 1, &light_position[0]));
 
         // Draw our triangles.
-        CHECK_GL_ERROR(glDrawElementsInstanced(GL_TRIANGLES, obj_faces.size() * 3,
-                                      GL_UNSIGNED_INT, 0, nCubeInstance));
+        CHECK_GL_ERROR(
+                glDrawElementsInstanced(GL_TRIANGLES, obj_faces.size() * 3,
+                                        GL_UNSIGNED_INT, 0, nCubeInstance));
 
         // FIXME: Render the floor
         // Note: What you need to do is

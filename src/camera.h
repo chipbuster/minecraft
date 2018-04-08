@@ -13,6 +13,8 @@ public:
     void ad_strafe_cam(int direction);
     void update_physics(double timestep);
 
+    glm::vec3 getEye() const;
+
     Camera();
     ~Camera() {};
 private:
