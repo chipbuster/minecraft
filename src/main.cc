@@ -222,27 +222,6 @@ int main(int argc, char* argv[])
                                 sizeof(uint32_t) * obj_faces.size() * 3,
                                 obj_faces.data(), GL_STATIC_DRAW));
 
-    // Switch to VAO for floor and generate VBOs
-    CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kFloorVao]));
-    CHECK_GL_ERROR(glGenBuffers(kNumVbos, &g_buffer_objects[kFloorVao][0]));
-
-    // Set up vertex data in the VBO
-    CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER,
-                                g_buffer_objects[kFloorVao][kVertexBuffer]));
-    CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER,
-                                sizeof(float) * floor_vertices.size() * 4,
-                                floor_vertices.data(), GL_STATIC_DRAW));
-    CHECK_GL_ERROR(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0));
-    CHECK_GL_ERROR(glEnableVertexAttribArray(0));
-
-    CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                g_buffer_objects[kFloorVao][kIndexBuffer]));
-    CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                                sizeof(uint32_t) * floor_faces.size() * 3,
-                                floor_faces.data(), GL_STATIC_DRAW));
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
     // Setup vertex shader.
     GLuint vertex_shader_id = 0;
     const char* vertex_source_pointer = vertex_shader;
@@ -293,43 +272,6 @@ int main(int argc, char* argv[])
     GLint light_position_location = 0;
     CHECK_GL_ERROR(light_position_location =
                            glGetUniformLocation(program_id, "light_position"));
-
-    // Setup fragment shader for the floor
-    GLuint floor_fragment_shader_id = 0;
-    const char* floor_fragment_source_pointer = floor_fragment_shader;
-    CHECK_GL_ERROR(floor_fragment_shader_id =
-                           glCreateShader(GL_FRAGMENT_SHADER));
-    CHECK_GL_ERROR(glShaderSource(floor_fragment_shader_id, 1,
-                                  &floor_fragment_source_pointer, nullptr));
-    glCompileShader(floor_fragment_shader_id);
-    CHECK_GL_SHADER_ERROR(floor_fragment_shader_id);
-
-    // Note: you can reuse the vertex and geometry shader objects
-    GLuint floor_program_id = 0;
-    GLint floor_projection_matrix_location = 0;
-    GLint floor_view_matrix_location = 0;
-    GLint floor_light_position_location = 0;
-
-    // Smash shaders together
-    CHECK_GL_ERROR(floor_program_id = glCreateProgram());
-    CHECK_GL_ERROR(glAttachShader(floor_program_id, vertex_shader_id));
-    CHECK_GL_ERROR(glAttachShader(floor_program_id, floor_fragment_shader_id));
-    CHECK_GL_ERROR(glAttachShader(floor_program_id, geometry_shader_id));
-
-    CHECK_GL_ERROR(
-            glBindAttribLocation(floor_program_id, 0, "vertex_position"));
-    CHECK_GL_ERROR(
-            glBindFragDataLocation(floor_program_id, 0, "fragment_color"));
-    glLinkProgram(floor_program_id);
-    CHECK_GL_PROGRAM_ERROR(floor_program_id);
-
-    // Get uniforms
-    CHECK_GL_ERROR(floor_projection_matrix_location = glGetUniformLocation(
-                           floor_program_id, "projection"));
-    CHECK_GL_ERROR(floor_view_matrix_location =
-                           glGetUniformLocation(floor_program_id, "view"));
-    CHECK_GL_ERROR(floor_light_position_location = glGetUniformLocation(
-                           floor_program_id, "light_position"));
 
     glm::vec4 light_position = glm::vec4(10.0f, 10.0f, 10.0f, 1.0f);
     float aspect = 0.0f;
@@ -392,28 +334,6 @@ int main(int argc, char* argv[])
         CHECK_GL_ERROR(
                 glDrawElementsInstanced(GL_TRIANGLES, obj_faces.size() * 3,
                                         GL_UNSIGNED_INT, 0, nCubeInstance));
-
-        // FIXME: Render the floor
-        // Note: What you need to do is
-        // 	1. Switch VAO
-        CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kFloorVao]));
-        CHECK_GL_ERROR(glBindBuffer(
-                GL_ARRAY_BUFFER, g_buffer_objects[kFloorVao][kVertexBuffer]));
-        CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                                    g_buffer_objects[kFloorVao][kIndexBuffer]));
-        // 	2. Switch Program
-        CHECK_GL_ERROR(glUseProgram(floor_program_id));
-        // 	3. Pass Uniforms
-        CHECK_GL_ERROR(glUniformMatrix4fv(floor_projection_matrix_location, 1,
-                                          GL_FALSE, &projection_matrix[0][0]));
-        CHECK_GL_ERROR(glUniformMatrix4fv(floor_view_matrix_location, 1,
-                                          GL_FALSE, &view_matrix[0][0]));
-        CHECK_GL_ERROR(glUniform4fv(floor_light_position_location, 1,
-                                    &light_position[0]));
-        // 	4. Call glDrawElements, since input geometry is
-        // 	indicated by VAO.
-        CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3,
-                                      GL_UNSIGNED_INT, 0));
 
         // Let camera velocities decay
         double timeDiff = toc(&timer);

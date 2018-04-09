@@ -195,7 +195,7 @@ std::vector<glm::vec3> Terrain::chunkSurface(glm::ivec2 chunkCoords,
                 break;
             case 1: // Left edge
                 start = 0;
-                Nstart = this->chunkExtent;
+                Nstart = this->chunkExtent - 1;
                 stride = this->chunkExtent;
                 Nstride = this->chunkExtent;
                 neighborNoise = this->getChunk(chunkCoords + glm::ivec2(-1, 0))
@@ -219,7 +219,10 @@ std::vector<glm::vec3> Terrain::chunkSurface(glm::ivec2 chunkCoords,
                                         .genPerlinNoise();
                 break;
         }
+
+        std::cout << "CASE " << z << std::endl;
         for (int i = 0; i < this->chunkExtent; i++) {
+            std::cout << neighborNoise.size() << ", " << i*Nstride+Nstart << std::endl;
             noise[i * stride + start] =
                     glm::mix(noise[i * stride + start],
                              neighborNoise[i * Nstride + Nstart], 0.4);
