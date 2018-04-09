@@ -114,9 +114,9 @@ void Camera::ws_walk_cam(int direction)
 {
     if (physics_mode) {
         if (direction > 0) {
-            velocity_ += 2.0f * look_;
+            velocity_ += look_;
         } else {
-            velocity_ -= 2.0f * look_;
+            velocity_ -= look_;
         }
     } else {
         if (direction > 0) {
@@ -132,9 +132,9 @@ void Camera::ad_strafe_cam(int direction)
 {
     if (physics_mode) {
         if (direction > 0) {
-            velocity_ += 2.0f * right_;
+            velocity_ += right_;
         } else {
-            velocity_ -= 2.0f * right_;
+            velocity_ -= right_;
         }
     } else {
         if (direction > 0) {
@@ -280,7 +280,7 @@ void Camera::update_physics(double timestep, const Chunk& C,
     this->velocity_ += glm::vec3(0.0f, -gravity, 0.0f);
 
     // Update camera velocity from friction
-    this->velocity_ *= pow(0.1, timestep);
+    this->velocity_ *= pow(0.01, timestep);
     if (glm::length(this->velocity_) < 0.05)
         this->velocity_ = glm::vec3(0.0);
 

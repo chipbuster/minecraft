@@ -52,6 +52,10 @@ void ErrorCallback(int error, const char* description)
 }
 
 Camera g_camera;
+int walk_cam = 0;
+int strafe_cam = 0;
+int roll_cam = 0;
+int lev_cam = 0;
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
                  int mods)
@@ -64,24 +68,32 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
     else if (key == GLFW_KEY_F && mods == GLFW_MOD_CONTROL &&
              action == GLFW_RELEASE) {
         g_camera.physics_mode = !g_camera.physics_mode;
-    } else if (key == GLFW_KEY_W && action != GLFW_RELEASE) {
-        g_camera.ws_walk_cam(1);
-    } else if (key == GLFW_KEY_S && action != GLFW_RELEASE) {
-        g_camera.ws_walk_cam(-1);
-    } else if (key == GLFW_KEY_A && action != GLFW_RELEASE) {
-        g_camera.ad_strafe_cam(-1);
-    } else if (key == GLFW_KEY_D && action != GLFW_RELEASE) {
-        g_camera.ad_strafe_cam(1);
-    } else if (key == GLFW_KEY_SPACE && action != GLFW_RELEASE) {
+    } else if (key == GLFW_KEY_W) {
+        if(action == GLFW_PRESS){ walk_cam = 1;}
+        if(action == GLFW_RELEASE){ walk_cam = 0;}
+    } else if (key == GLFW_KEY_S) {
+        if(action == GLFW_PRESS){ walk_cam = -1;}
+        if(action == GLFW_RELEASE){ walk_cam = 0;}
+    } else if (key == GLFW_KEY_A ) {
+        if(action == GLFW_PRESS){ strafe_cam = -1;}
+        if(action == GLFW_RELEASE){ strafe_cam = 0;}
+    } else if (key == GLFW_KEY_D ) {
+        if(action == GLFW_PRESS){ strafe_cam = 1;}
+        if(action == GLFW_RELEASE){ strafe_cam = 0;}
+    } else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
         g_camera.jump();
-    } else if (key == GLFW_KEY_LEFT && action != GLFW_RELEASE) {
-        g_camera.lr_roll_cam(1);
-    } else if (key == GLFW_KEY_RIGHT && action != GLFW_RELEASE) {
-        g_camera.lr_roll_cam(-1);
-    } else if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE) {
-        g_camera.ud_move_cam(1);
-    } else if (key == GLFW_KEY_UP && action != GLFW_RELEASE) {
-        g_camera.ud_move_cam(1);
+    } else if (key == GLFW_KEY_LEFT) {
+        if(action == GLFW_PRESS){ roll_cam = 1;}
+        if(action == GLFW_RELEASE){ roll_cam = 0;}
+    } else if (key == GLFW_KEY_RIGHT ) {
+        if(action == GLFW_PRESS){ roll_cam = -1;}
+        if(action == GLFW_RELEASE){ roll_cam = 0;}
+    } else if (key == GLFW_KEY_DOWN ) {
+        if(action == GLFW_PRESS){ lev_cam = 1;}
+        if(action == GLFW_RELEASE){ lev_cam = 0;}
+    } else if (key == GLFW_KEY_UP) {
+        if(action == GLFW_PRESS){ lev_cam = -1;}
+        if(action == GLFW_RELEASE){ lev_cam = 0;}
     } else if (key == GLFW_KEY_C && action != GLFW_RELEASE) {
         // No non-FPS mode here
         ((void)0);
@@ -341,6 +353,12 @@ int main(int argc, char* argv[])
                 timeDiff, T.getChunk(T.getChunkCoords(g_camera.getEye())), offsets);
         std::cout << '\r';
         std::cout << "FPS = " << 1.0 / timeDiff;
+
+        // Apply camera transforms
+        if(walk_cam){g_camera.ws_walk_cam(walk_cam);}
+        if(strafe_cam){g_camera.ad_strafe_cam(strafe_cam);}
+        if(walk_cam){g_camera.lr_roll_cam(roll_cam);}
+        if(walk_cam){g_camera.ud_move_cam(lev_cam);}
 
         // Poll and swap.
         glfwPollEvents();
