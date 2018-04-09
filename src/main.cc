@@ -61,8 +61,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
     // you may want to re-organize this piece of code.
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
-    else if (key == GLFW_KEY_S && mods == GLFW_MOD_CONTROL &&
+    else if (key == GLFW_KEY_F && mods == GLFW_MOD_CONTROL &&
              action == GLFW_RELEASE) {
+        g_camera.physics_mode = !g_camera.physics_mode;
     } else if (key == GLFW_KEY_W && action != GLFW_RELEASE) {
         g_camera.ws_walk_cam(1);
     } else if (key == GLFW_KEY_S && action != GLFW_RELEASE) {
@@ -71,10 +72,16 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
         g_camera.ad_strafe_cam(-1);
     } else if (key == GLFW_KEY_D && action != GLFW_RELEASE) {
         g_camera.ad_strafe_cam(1);
+    } else if (key == GLFW_KEY_SPACE && action != GLFW_RELEASE) {
+        g_camera.jump();
     } else if (key == GLFW_KEY_LEFT && action != GLFW_RELEASE) {
+        g_camera.lr_roll_cam(1);
     } else if (key == GLFW_KEY_RIGHT && action != GLFW_RELEASE) {
+        g_camera.lr_roll_cam(-1);
     } else if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE) {
+        g_camera.ud_move_cam(1);
     } else if (key == GLFW_KEY_UP && action != GLFW_RELEASE) {
+        g_camera.ud_move_cam(1);
     } else if (key == GLFW_KEY_C && action != GLFW_RELEASE) {
         // No non-FPS mode here
         ((void)0);

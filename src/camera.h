@@ -12,8 +12,11 @@ public:
     void mm_trans_cam(double screenX, double screenY);
     void ws_walk_cam(int direction);
     void ad_strafe_cam(int direction);
+    void lr_roll_cam(int direction);
+    void ud_move_cam(int direction);
     void update_physics(double timestep, const Chunk& C, const std::vector<glm::vec3>& cubes);
     bool physics_mode = true;
+    void jump();
 
     glm::vec3 getEye() const;
 
@@ -31,7 +34,7 @@ private:
     glm::mat4 world_to_cam_;
 
     glm::vec3 velocity_ = glm::vec3(0.0f,0.0f,0.0f);
-    float gravity = 9.8;
+    float gravity = 0.98;
     float friction = 1.0;
 
     void update_internal_data();

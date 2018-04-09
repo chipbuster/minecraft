@@ -60,7 +60,7 @@ std::vector<float> Chunk::genPerlinNoise() const
 
     // Generate a higher octave at the corners only
     glm::vec2 chunkGrads2[4];
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < 4; i++) {
         chunkGrads2[i] = circleSample(ran());
     }
 

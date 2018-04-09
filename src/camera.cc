@@ -84,13 +84,39 @@ void Camera::mm_trans_cam(double screendX, double screendY)
     update_internal_data();
 }
 
+void Camera::lr_roll_cam(int direction)
+{
+    if (physics_mode)
+        return;
+    if (direction > 0) {
+        this->up_ = glm::vec3(glm::rotate(-roll_speed, this->look_) *
+                              glm::vec4(this->up_, 0.0f));
+    } else {
+        this->up_ = glm::vec3(glm::rotate(roll_speed, this->look_) *
+                              glm::vec4(this->up_, 0.0f));
+    }
+    update_internal_data();
+}
+
+void Camera::ud_move_cam(int direction)
+{
+    if (physics_mode)
+        return;
+    if (direction > 0) {
+        this->eye_ += pan_speed * this->up_;
+    } else {
+        this->eye_ -= pan_speed * this->up_;
+    }
+    update_internal_data();
+}
+
 void Camera::ws_walk_cam(int direction)
 {
     if (physics_mode) {
         if (direction > 0) {
-            velocity_ += look_;
+            velocity_ += 2.0f * look_;
         } else {
-            velocity_ -= look_;
+            velocity_ -= 2.0f * look_;
         }
     } else {
         if (direction > 0) {
@@ -104,14 +130,22 @@ void Camera::ws_walk_cam(int direction)
 
 void Camera::ad_strafe_cam(int direction)
 {
-    if (direction > 0) {
-        eye_ += zoom_speed * right_;
+    if (physics_mode) {
+        if (direction > 0) {
+            velocity_ += 2.0f * right_;
+        } else {
+            velocity_ -= 2.0f * right_;
+        }
     } else {
-        eye_ -= zoom_speed * right_;
+        if (direction > 0) {
+            eye_ += zoom_speed * right_;
+        } else {
+            eye_ -= zoom_speed * right_;
+        }
     }
     update_internal_data();
 }
-
+        
 /* Assuming that look_, up_, and eye_ are the correct pieces of data, update
    redundant data forms (e.g. cam_to_world_, right_) to be consistent */
 void Camera::update_internal_data()
@@ -158,7 +192,6 @@ constexpr float camH = 1.75;
 constexpr float camR = 0.49;
 CollisionType collide(const glm::vec3& location, const glm::vec3& Cmin)
 {
-
     float minX = Cmin.x;
     float maxX = minX + 1.0;
     float minZ = Cmin.z;
@@ -196,33 +229,40 @@ CollisionType collide(const glm::vec3& location, const glm::vec3& Cmin)
                      camMaxZ < maxZ && camMinZ > minZ;
 
     if (MaxYCross && inBoundsX && inBoundsZ) {
+        /*
         cout << "Collision of " << glm::to_string(location) << " with "
-             << glm::to_string(Cmin) << " of type FLOOR" << std::endl;
+             << glm::to_string(Cmin) << " of type FLOOR" << std::endl; */
         ct = ct | FLOOR;
     }
     if (MinYCross && inBoundsX && inBoundsZ) {
+        /*
         cout << "Collision of " << glm::to_string(location) << " with "
-             << glm::to_string(Cmin) << " of type CEIL" << std::endl;
+             << glm::to_string(Cmin) << " of type CEIL" << std::endl; */
         ct = ct | CEIL;
     }
     if (MaxXCross && inBoundsY && inBoundsZ) {
+        /*
         cout << "Collision of " << glm::to_string(location) << " with "
-             << glm::to_string(Cmin) << " of type MINX" << std::endl;
+             << glm::to_string(Cmin) << " of type MINX" << std::endl; */
         ct = ct | MINX;
     }
     if (MinXCross && inBoundsY && inBoundsZ) {
+        /*
         cout << "Collision of " << glm::to_string(location) << " with "
-             << glm::to_string(Cmin) << " of type MAXX" << std::endl;
+             << glm::to_string(Cmin) << " of type MAXX" << std::endl; */
         ct = ct | MAXX;
     }
     if (MaxZCross && inBoundsY && inBoundsX) {
+        /*
         cout << "Collision of " << glm::to_string(location) << " with "
-             << glm::to_string(Cmin) << " of type MINZ" << std::endl;
+             << glm::to_string(Cmin) << " of type MINZ" << std::endl; */
         ct = ct | MINZ;
     }
     if (MinZCross && inBoundsY && inBoundsX) {
+        /*
         cout << "Collision of " << glm::to_string(location) << " with "
-             << glm::to_string(Cmin) << " of type MAXZ" << std::endl;
+             << glm::to_string(Cmin) << " of type MAXZ" << std::endl;*/
+
         ct = ct | MAXZ;
     }
     return ct;
@@ -231,13 +271,18 @@ CollisionType collide(const glm::vec3& location, const glm::vec3& Cmin)
 void Camera::update_physics(double timestep, const Chunk& C,
                             const std::vector<glm::vec3>& cubes)
 {
+    if (!physics_mode)
+        return;
+
     constexpr float camH = 1.75;
     constexpr float camR = 0.5;
     // Update camera velocity from gravity
     this->velocity_ += glm::vec3(0.0f, -gravity, 0.0f);
 
     // Update camera velocity from friction
-    this->velocity_ *= 0.8;
+    this->velocity_ *= pow(0.1, timestep);
+    if (glm::length(this->velocity_) < 0.05)
+        this->velocity_ = glm::vec3(0.0);
 
     // Update camera velocity from collisions
     std::vector<glm::vec3>
@@ -258,7 +303,7 @@ void Camera::update_physics(double timestep, const Chunk& C,
 
         if (coll & FLOOR) {
             // If we are falling, make sure we don't fall too far
-            if(this->velocity_.y < -10){
+            if (this->velocity_.y < -10) {
                 this->eye_.y = c.y + camH + 1.0 + eps / 2;
             }
             this->velocity_.y = max(0.0f, this->velocity_.y);
@@ -296,4 +341,9 @@ void Camera::update_physics(double timestep, const Chunk& C,
 glm::vec3 Camera::getEye() const
 {
     return eye_;
+}
+
+void Camera::jump()
+{
+    this->velocity_ += glm::vec3(0.0f, 20.0f, 0.0f);
 }
