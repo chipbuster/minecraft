@@ -8,6 +8,7 @@ uniform vec4 light_position;
 out vec4 vs_light_direction;
 out vec4 u_pos;
 out float vs_seed;
+out vec4 o_pos;
 
 void main()
 {
@@ -15,5 +16,6 @@ void main()
     gl_Position = view * u_pos;
     vs_light_direction = -gl_Position + view * light_position;
     vs_seed = in_seed;
+    o_pos = u_pos;
 }
 )zzz"

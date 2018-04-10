@@ -5,10 +5,12 @@ uniform mat4 projection;
 uniform mat4 view;
 in vec4 vs_light_direction[];
 in vec4 u_pos[];
+in vec4 o_pos[];
 in float vs_seed[];
 flat out vec4 normal;
 out vec4 light_direction;
 out vec4 world_pos;
+out vec4 cube_pos;
 out float seed;
 
 void main()
