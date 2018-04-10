@@ -44,7 +44,7 @@ std::vector<glm::vec4> floor_vertices = {
 std::vector<glm::uvec3> floor_faces = {{0, 2, 1}, {3, 2, 0}};
 
 constexpr unsigned int nCubeInstance =
-        8000; // 5x5 chunks, 16x16 each, with spares
+        32000; // 5x5 chunks, 16x16 each, with spares
 
 void ErrorCallback(int error, const char* description)
 {
@@ -297,7 +297,7 @@ int main(int argc, char* argv[])
         if (currChunkOver != chunkOver) {
             chunkOver = currChunkOver;
             offsets = T.getOffsetsForRender(g_camera.getEye(),
-                                            glm::vec2(-5.0, 0.0));
+                                            glm::vec2(-15.0, 0.0));
             seeds = T.getSeedsForRender(g_camera.getEye());
 
             CHECK_GL_ERROR(

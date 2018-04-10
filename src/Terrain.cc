@@ -148,7 +148,7 @@ std::vector<float> Chunk::genPerlinNoise() const
             int index = i + j * extent;
 
             outputs[index] =
-                    0.5 * perlinNoiseSquare(coordsHiOctave, cellGrads1);
+                    0.25 * perlinNoiseSquare(coordsHiOctave, cellGrads1);
             outputs[index] += perlinNoiseSquare(coordsLoOctave, &O1grad[0]);
             outputs[index] /= 1.5;
         }
@@ -327,7 +327,7 @@ std::vector<glm::vec3> Terrain::getOffsetsForRender(glm::vec3 camCoords,
     fixNeighborGaps(offsets, offsetSize);
 
     // Sinkhole other cubes
-    while (offsets.size() < 8000) {
+    while (offsets.size() < 32000) {
         offsets.emplace_back(0.0f, -1000.0f, 0.0f);
     }
 

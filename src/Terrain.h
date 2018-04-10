@@ -63,7 +63,7 @@ class Terrain {
                        std::equal_to<glm::ivec2>>
             chunkMap;
     std::mt19937 gen;
-    int chunkExtent = 16;
+    int chunkExtent = 32;
 
     public:
     Terrain(uint64_t seed) : gen(seed) {}
