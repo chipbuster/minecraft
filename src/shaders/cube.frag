@@ -137,6 +137,7 @@ void main()
     }
 
     fragment_color = col / 2.0 * baseCol; 
+    fragment_color += vec4(0.10,0.10,0.10, 1.0);
 
     float dot_nl = dot(normalize(light_direction), view * normalize(normal));
     dot_nl = clamp(dot_nl, 0.0, 1.0);
