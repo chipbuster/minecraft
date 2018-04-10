@@ -12,6 +12,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
+class Terrain;
 
 // *** INDEXING CONVENTION *** //
 
@@ -41,13 +42,12 @@
 
 // A chunk is a finite-sized (16x16?) size of cubes
 class Chunk {
-    uint32_t tex_seed; // Seed used to determine textures
-    uint32_t per_seed; // Seed used to determine heights (via perlin noise)
-
-    std::vector<int> clampedEdges;
+    uint32_t tex_seed;
+    glm::vec2 O1grad[4];
+    glm::vec2 O2grad[9];
 
     public:
-    Chunk(const glm::ivec2& location, int extent, std::mt19937& gen);
+    Chunk(const glm::ivec2& location, int extent, std::mt19937& gen, Terrain* T);
 
     std::vector<float> genPerlinNoise() const;
     std::vector<float> texSeedMap() const;

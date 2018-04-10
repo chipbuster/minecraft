@@ -4,12 +4,66 @@
 
 constexpr double pi = 3.14159265358979323846264338;
 
-Chunk::Chunk(const glm::ivec2& location, int extent, std::mt19937& gen)
+// Generate a point on a circle
+glm::vec2 circleSample(float theta)
 {
+    return glm::vec2(cos(theta), sin(theta));
+}
+
+Chunk::Chunk(const glm::ivec2& location, int extent, std::mt19937& gen,
+             Terrain* T)
+{
+    std::cout << "Location is " << glm::to_string(location) << std::endl;
     this->tex_seed = gen();
-    this->per_seed = gen();
     this->loc = location;
     this->extent = extent;
+
+    std::uniform_real_distribution<> dis(0.0,pi);
+
+    for(int i = 0; i < 4; i++){
+        O1grad[i] = circleSample(dis(gen));
+    }
+    for(int i = 0; i < 9; i++){
+        O2grad[i] = circleSample(dis(gen));
+    }
+
+    if(location == glm::ivec2(0,0)){return;}
+
+    // Rule: Chunk closest to chunk (0,0) takes precedence
+    if(location.x == 0){ ((void)0);}
+    else if(location.x > 0){ // Replace left edge
+        const Chunk& C = T->getChunk(location + glm::ivec2(-1,0));
+        O1grad[0] = C.O1grad[1];
+        O1grad[2] = C.O1grad[3];
+        O2grad[0] = C.O2grad[2];
+        O2grad[3] = C.O2grad[5];
+        O2grad[6] = C.O2grad[8];
+    }
+    else{ // Replace right edge
+        const Chunk& C = T->getChunk(location + glm::ivec2(1,0));
+        O1grad[1] = C.O1grad[0];
+        O1grad[3] = C.O1grad[2];
+        O2grad[2] = C.O2grad[0];
+        O2grad[5] = C.O2grad[3];
+        O2grad[8] = C.O2grad[6];
+    }
+    if(location.y == 0){ ((void)0); }
+    else if(location.y > 0){ // Replace Bot edge
+        const Chunk& C = T->getChunk(location + glm::ivec2(0,-1));
+        O1grad[0] = C.O1grad[2];
+        O1grad[1] = C.O1grad[3];
+        O2grad[0] = C.O2grad[6];
+        O2grad[1] = C.O2grad[7];
+        O2grad[2] = C.O2grad[8];
+    }
+    else{
+        const Chunk& C = T->getChunk(location + glm::ivec2(0,1));
+        O1grad[2] = C.O1grad[0];
+        O1grad[3] = C.O1grad[1];
+        O2grad[6] = C.O2grad[0];
+        O2grad[7] = C.O2grad[1];
+        O2grad[8] = C.O2grad[2];
+    }
 }
 
 constexpr float perlinFade(float t)
@@ -20,7 +74,7 @@ constexpr float perlinFade(float t)
 /* coords: coordinates to take noise at. Scaled to be on a 0-1 square
    grads: gradients at corners. grad[0] is at (0,0), grad[1] is at (1,0),
                                 grad[2] is at (0,1), grad[3] is at (1,1) */
-float perlinNoiseSquare(const glm::vec2& coords, glm::vec2* grad)
+float perlinNoiseSquare(const glm::vec2& coords, const glm::vec2* grad)
 {
     glm::vec2 from0 = coords - glm::vec2(0, 0);
     glm::vec2 from1 = coords - glm::vec2(1, 0);
@@ -39,30 +93,14 @@ float perlinNoiseSquare(const glm::vec2& coords, glm::vec2* grad)
     return mid;
 }
 
-// Generate a point on a circle
-glm::vec2 circleSample(float theta)
-{
-    return glm::vec2(cos(theta), sin(theta));
-}
+
 
 std::vector<float> Chunk::genPerlinNoise() const
 {
-    std::mt19937 ran(per_seed);
     std::vector<float> outputs;
     outputs.resize(extent * extent);
 
-    // Generate gradients at the corners, edge midpoints, and center
-    // Follow row-major bottom-left to top-right convention (see Terrain.h)
-    glm::vec2 chunkGrads3[9];
-    for (int i = 0; i < 9; i++) {
-        chunkGrads3[i] = circleSample(ran());
-    }
-
-    // Generate a higher octave at the corners only
-    glm::vec2 chunkGrads2[4];
-    for (int i = 0; i < 4; i++) {
-        chunkGrads2[i] = circleSample(ran());
-    }
+    // TODO: rewrite to clamp to edges
 
     // Generate 16 equispaced points on a (0,2) square.
     glm::vec2 cellGrads1[4]; // Octave 1 noise
@@ -70,34 +108,34 @@ std::vector<float> Chunk::genPerlinNoise() const
     for (int i = 0; i < extent; i++) {
         for (int j = 0; j < extent; j++) {
             // Set grads
-            if (i < extent / 2) {
+            if (i < extent / 2 && j < extent / 2) {
                 if (j < extent / 2) {
                     // lower-left quadrant
-                    cellGrads1[0] = chunkGrads3[0];
-                    cellGrads1[1] = chunkGrads3[1];
-                    cellGrads1[2] = chunkGrads3[3];
-                    cellGrads1[3] = chunkGrads3[4];
+                    cellGrads1[0] = O2grad[0];
+                    cellGrads1[1] = O2grad[1];
+                    cellGrads1[2] = O2grad[3];
+                    cellGrads1[3] = O2grad[4];
                 } else {
                     // upper-left quadrant
-                    cellGrads1[0] = chunkGrads3[3];
-                    cellGrads1[1] = chunkGrads3[4];
-                    cellGrads1[2] = chunkGrads3[6];
-                    cellGrads1[3] = chunkGrads3[7];
+                    cellGrads1[0] = O2grad[3];
+                    cellGrads1[1] = O2grad[4];
+                    cellGrads1[2] = O2grad[6];
+                    cellGrads1[3] = O2grad[7];
                 }
             } else {
                 if (j < extent / 2) {
                     // lower-right quadrant
-                    cellGrads1[0] = chunkGrads3[1];
-                    cellGrads1[1] = chunkGrads3[2];
-                    cellGrads1[2] = chunkGrads3[4];
-                    cellGrads1[3] = chunkGrads3[5];
+                    cellGrads1[0] = O2grad[1];
+                    cellGrads1[1] = O2grad[2];
+                    cellGrads1[2] = O2grad[4];
+                    cellGrads1[3] = O2grad[5];
 
                 } else {
                     // upper-right quadrant
-                    cellGrads1[0] = chunkGrads3[4];
-                    cellGrads1[1] = chunkGrads3[5];
-                    cellGrads1[2] = chunkGrads3[7];
-                    cellGrads1[3] = chunkGrads3[8];
+                    cellGrads1[0] = O2grad[4];
+                    cellGrads1[1] = O2grad[5];
+                    cellGrads1[2] = O2grad[7];
+                    cellGrads1[3] = O2grad[8];
                 }
             }
 
@@ -111,7 +149,7 @@ std::vector<float> Chunk::genPerlinNoise() const
 
             outputs[index] =
                     0.5 * perlinNoiseSquare(coordsHiOctave, cellGrads1);
-            outputs[index] += perlinNoiseSquare(coordsLoOctave, chunkGrads2);
+            outputs[index] += perlinNoiseSquare(coordsLoOctave, &O1grad[0]);
             outputs[index] /= 1.5;
         }
     }
@@ -135,7 +173,7 @@ const Chunk& Terrain::getChunk(glm::ivec2 chunkCoords)
 {
     auto chunk = this->chunkMap.find(chunkCoords);
     if (chunk == this->chunkMap.end()) {
-        Chunk c = Chunk(chunkCoords, this->chunkExtent, this->gen);
+        Chunk c = Chunk(chunkCoords, this->chunkExtent, this->gen, this);
         auto status = this->chunkMap.insert({chunkCoords, c});
         if (!status.second) {
             std::cout << "Could not insert chunk into chunkMap" << std::endl;

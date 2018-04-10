@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include "Terrain.h"
 
+
 class Camera {
 public:
     glm::mat4 get_view_matrix() const;
