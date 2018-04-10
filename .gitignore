@@ -3,5 +3,6 @@ build/*
 *.png
 *.bmp
 *.obj
+*~
 raycheck.out/
 third-party
