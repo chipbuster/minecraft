@@ -4,6 +4,7 @@ in vec4 light_direction;
 in vec4 world_pos;
 in float seed;
 in vec4 cube_pos;
+in vec4 world_pos;
 uniform mat4 view;
 out vec4 fragment_color;
 
@@ -63,6 +64,31 @@ float perlin(vec2 coord, vec2 grad[4])
     float bot = mix(inf0, inf1, perlinFade(coord[0]));
     float mid = mix(bot, top, perlinFade(coord[1]));
 
+    return mid;
+}
+
+vec2 circleSample(float theta) {
+    return vec2(cos(theta), sin(theta));
+}
+
+float perlinFade(float t)
+{
+    return 6 * t * t * t * t * t - 15 * t * t * t * t + 10 * t * t * t;
+}
+
+float perlinNoiseSquare(vec2 coords, vec2 grad0, vec2 grad1, vec2 grad2, vec2 grad3)
+{
+    vec2 from0 = coords - vec2(0,0);
+    vec2 from1 = coords - vec2(1,0);
+    vec2 from2 = coords - vec2(0,1);
+    vec2 from3 = coords - vec2(1,1);
+    float inf0 = dot(grad0, from0);
+    float inf1 = dot(grad1, from1);
+    float inf2 = dot(grad2, from2);
+    float inf3 = dot(grad3, from3);
+    float top = mix(inf2, inf3, perlinFade(coords[0]));
+    float bot = mix(inf0, inf1, perlinFade(coords[0]));
+    float mid = mix(bot, top, perlinFade(coords[1]));
     return mid;
 }
 
@@ -145,4 +171,3 @@ void main()
     fragment_color[3] = 1.0;
 }
 )zzz"
-
