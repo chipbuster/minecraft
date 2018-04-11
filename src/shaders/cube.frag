@@ -102,7 +102,7 @@ void main()
     //col += perlin(mod(plane_pos_mod * 2.0,2.0), o2grad);
 
     vec4 baseCol;
-    if(world_pos.y < -7.999){
+    if(world_pos.y < -8.999){
         baseCol = vec4(0.1,0.4,0.8,1.0);
     }
     else if(world_pos.y < -5.999){

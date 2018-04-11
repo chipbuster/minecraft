@@ -357,8 +357,8 @@ int main(int argc, char* argv[])
         // Apply camera transforms
         if(walk_cam){g_camera.ws_walk_cam(walk_cam);}
         if(strafe_cam){g_camera.ad_strafe_cam(strafe_cam);}
-        if(walk_cam){g_camera.lr_roll_cam(roll_cam);}
-        if(walk_cam){g_camera.ud_move_cam(lev_cam);}
+        if(roll_cam){g_camera.lr_roll_cam(roll_cam);}
+        if(lev_cam){g_camera.ud_move_cam(lev_cam);}
 
         // Poll and swap.
         glfwPollEvents();
