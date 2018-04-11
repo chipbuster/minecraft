@@ -4,5 +4,6 @@ build/*
 *.bmp
 *.obj
 *~
+compile
 raycheck.out/
 third-party

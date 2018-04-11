@@ -218,15 +218,15 @@ CollisionType collide(const glm::vec3& location, const glm::vec3& Cmin)
     bool MinZCross = camMaxZ > minZ && camMinZ < minZ;
 
     // Cylinder is inbounds if it crosses an edge or is entirely within the cell
-    bool inBoundsY = camBot < maxY && camBot > minY ||
-                     camTop < maxY && camTop > minY ||
-                     camBot > minY && camTop < maxY;
-    bool inBoundsX = camMinX < maxX && camMinX > minX ||
-                     camMaxX < maxX && camMaxX > minX ||
-                     camMaxX < maxX && camMinX > minX;
-    bool inBoundsZ = camMinZ < maxZ && camMinZ > minZ ||
-                     camMaxZ < maxZ && camMaxZ > minZ ||
-                     camMaxZ < maxZ && camMinZ > minZ;
+    bool inBoundsY = (camBot < maxY && camBot > minY) ||
+                     (camTop < maxY && camTop > minY) ||
+                     (camBot > minY && camTop < maxY);
+    bool inBoundsX = (camMinX < maxX && camMinX > minX) ||
+                     (camMaxX < maxX && camMaxX > minX) ||
+                     (camMaxX < maxX && camMinX > minX);
+    bool inBoundsZ = (camMinZ < maxZ && camMinZ > minZ) ||
+                     (camMaxZ < maxZ && camMaxZ > minZ) ||
+                     (camMaxZ < maxZ && camMinZ > minZ);
 
     if (MaxYCross && inBoundsX && inBoundsZ) {
         /*

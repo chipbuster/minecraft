@@ -364,6 +364,7 @@ int main(int argc, char* argv[])
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
+    std::cout << std::endl;
     glfwDestroyWindow(window);
     glfwTerminate();
     exit(EXIT_SUCCESS);

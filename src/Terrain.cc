@@ -1,5 +1,7 @@
 #include "Terrain.h"
 #include <cmath>
+#include <cassert>
+#include <iostream>
 #include "glm/gtx/string_cast.hpp"
 
 constexpr double pi = 3.14159265358979323846264338;
@@ -90,6 +92,7 @@ float perlinNoiseSquare(const glm::vec2& coords, const glm::vec2* grad)
     float bot = glm::mix(inf0, inf1, perlinFade(coords[0]));
     float mid = glm::mix(bot, top, perlinFade(coords[1]));
 
+    mid = (mid / (sqrt(2) / 2) + 1) / 2;
     return mid;
 }
 
