@@ -65,13 +65,13 @@ CollisionType collide(const glm::vec3& location, const glm::vec3& Cmin)
     CollisionType ct = NONE;
 
     bool MaxYCross =
-            camBot < maxY + eps && camTop > maxY; // Camera crosses maxY
+            (camBot < (maxY + eps)) && (camTop > maxY); // Camera crosses maxY
     bool MinYCross =
-            camTop > minY - eps && camBot < minY; // Camera crosses minY
-    bool MaxXCross = camMinX < maxX && camMaxX > maxX;
-    bool MaxZCross = camMinZ < maxZ && camMaxZ > maxZ;
-    bool MinXCross = camMaxX > minX && camMinX < minX;
-    bool MinZCross = camMaxZ > minZ && camMinZ < minZ;
+            (camTop > (minY - eps)) && (camBot < minY); // Camera crosses minY
+    bool MaxXCross = (camMinX < (maxX - eps)) && ((camMaxX - eps) > maxX);
+    bool MaxZCross = (camMinZ < (maxZ - eps)) && ((camMaxZ - eps) > maxZ);
+    bool MinXCross = ((camMaxX - eps) > minX) && (camMinX < (minX - eps));
+    bool MinZCross = ((camMaxZ - eps) > minZ) && (camMinZ < (minZ - eps));
 
     // Cylinder is inbounds if it crosses an edge or is entirely within the cell
     bool inBoundsY = (camBot < maxY && camBot > minY) ||
@@ -183,7 +183,7 @@ void Camera::rm_zoom_cam(double screendY)
 void Camera::mm_trans_cam(double screendX, double screendY)
 {
     glm::vec2 amt = glm::normalize(glm::dvec2(screendX, screendY));
-    cout << amt[0] << "," << amt[1] << endl;
+    //cout << amt[0] << "," << amt[1] << endl;
     glm::vec3 camDir = amt[0] * right_ - amt[1] * up_;
 
     this->eye_ += camDir * pan_speed;
@@ -276,7 +276,7 @@ void Camera::ws_walk_cam(int direction, const std::vector<glm::vec3>& cubes)
         }
     }
 
-    if(!fail and !physics_mode) {
+    if(!fail or physics_mode) {
         update_internal_data();
     }
 }
@@ -316,7 +316,7 @@ void Camera::ad_strafe_cam(int direction, const std::vector<glm::vec3>& cubes)
         }
     }
 
-    if(!fail and !physics_mode) {
+    if(!fail or physics_mode) {
         update_internal_data();
     }
 

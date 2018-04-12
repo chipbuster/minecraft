@@ -15,7 +15,7 @@ glm::vec2 circleSample(float theta)
 Chunk::Chunk(const glm::ivec2& location, int extent, std::mt19937& gen,
              Terrain* T)
 {
-    std::cout << "Location is " << glm::to_string(location) << std::endl;
+    //std::cout << "Location is " << glm::to_string(location) << std::endl;
     this->tex_seed = gen();
     this->loc = location;
     this->extent = extent;
@@ -179,7 +179,7 @@ const Chunk& Terrain::getChunk(glm::ivec2 chunkCoords)
         Chunk c = Chunk(chunkCoords, this->chunkExtent, this->gen, this);
         auto status = this->chunkMap.insert({chunkCoords, c});
         if (!status.second) {
-            std::cout << "Could not insert chunk into chunkMap" << std::endl;
+            std::cerr << "Could not insert chunk into chunkMap" << std::endl;
         }
         return status.first->second;
     } else {
@@ -261,9 +261,9 @@ std::vector<glm::vec3> Terrain::chunkSurface(glm::ivec2 chunkCoords,
                 break;
         }
 
-        std::cout << "CASE " << z << std::endl;
+        //std::cout << "CASE " << z << std::endl;
         for (int i = 0; i < this->chunkExtent; i++) {
-            std::cout << neighborNoise.size() << ", " << i*Nstride+Nstart << std::endl;
+            //std::cout << neighborNoise.size() << ", " << i*Nstride+Nstart << std::endl;
             noise[i * stride + start] =
                     glm::mix(noise[i * stride + start],
                              neighborNoise[i * Nstride + Nstart], 0.4);

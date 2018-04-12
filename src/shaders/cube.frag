@@ -105,7 +105,7 @@ void main()
     if(world_pos.y < -8.999){
         baseCol = vec4(0.1,0.4,0.8,1.0);
     }
-    else if(world_pos.y < -5.999){
+    else if(world_pos.y < -6.999){
         baseCol = vec4(0.3,0.6,0.1,1.0);
     }else{
         baseCol = vec4(1.0,1.0,1.0,1.0);
@@ -115,7 +115,7 @@ void main()
     fragment_color += vec4(0.10,0.10,0.10, 1.0);
 
     float dot_nl = dot(normalize(light_direction), view * normalize(normal));
-    dot_nl = clamp(dot_nl, 0.2, 1.0);
+    dot_nl = clamp(dot_nl, 0.3, 1.0);
     fragment_color = clamp( fragment_color * dot_nl, 0.0, 1.0);
     fragment_color[3] = 1.0;
 }

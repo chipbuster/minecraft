@@ -352,8 +352,8 @@ int main(int argc, char* argv[])
         double timeDiff = toc(&timer);
         g_camera.update_physics(
                 timeDiff, T.getChunk(T.getChunkCoords(g_camera.getEye())), offsets);
-        std::cout << '\r';
-        std::cout << "FPS = " << 1.0 / timeDiff;
+        //std::cout << '\r';
+        //std::cout << "FPS = " << 1.0 / timeDiff;
 
         // Apply camera transforms
         if(walk_cam){g_camera.ws_walk_cam(walk_cam, offsets);}
@@ -365,7 +365,7 @@ int main(int argc, char* argv[])
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
     glfwDestroyWindow(window);
     glfwTerminate();
     exit(EXIT_SUCCESS);

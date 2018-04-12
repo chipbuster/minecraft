@@ -118,6 +118,8 @@ class ArchiveChecker:
             if 'pmd_reader_impl.inl' in f:
                 self.project_name = 'skinning'
                 break
+            if 'Terrain.cc' in f:
+                self.project_name = 'minecraft'
         if self.project_name is None:
             self.bug('{file} is probably not archiving a course project')
 
