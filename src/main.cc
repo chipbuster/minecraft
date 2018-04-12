@@ -68,6 +68,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
     else if (key == GLFW_KEY_F && mods == GLFW_MOD_CONTROL &&
              action == GLFW_RELEASE) {
         g_camera.physics_mode = !g_camera.physics_mode;
+        std::cout << "Switching to " << (g_camera.physics_mode ? "gravity" : "non-gravity") << " mode" << std::endl;
     } else if (key == GLFW_KEY_W) {
         if(action == GLFW_PRESS){ walk_cam = 1;}
         if(action == GLFW_RELEASE){ walk_cam = 0;}
@@ -89,10 +90,10 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
         if(action == GLFW_PRESS){ roll_cam = -1;}
         if(action == GLFW_RELEASE){ roll_cam = 0;}
     } else if (key == GLFW_KEY_DOWN ) {
-        if(action == GLFW_PRESS){ lev_cam = 1;}
+        if(action == GLFW_PRESS){ lev_cam = -1;}
         if(action == GLFW_RELEASE){ lev_cam = 0;}
     } else if (key == GLFW_KEY_UP) {
-        if(action == GLFW_PRESS){ lev_cam = -1;}
+        if(action == GLFW_PRESS){ lev_cam = 1;}
         if(action == GLFW_RELEASE){ lev_cam = 0;}
     } else if (key == GLFW_KEY_C && action != GLFW_RELEASE) {
         // No non-FPS mode here
@@ -355,10 +356,10 @@ int main(int argc, char* argv[])
         std::cout << "FPS = " << 1.0 / timeDiff;
 
         // Apply camera transforms
-        if(walk_cam){g_camera.ws_walk_cam(walk_cam);}
-        if(strafe_cam){g_camera.ad_strafe_cam(strafe_cam);}
-        if(roll_cam){g_camera.lr_roll_cam(roll_cam);}
-        if(lev_cam){g_camera.ud_move_cam(lev_cam);}
+        if(walk_cam){g_camera.ws_walk_cam(walk_cam, offsets);}
+        if(strafe_cam){g_camera.ad_strafe_cam(strafe_cam, offsets);}
+        if(roll_cam){g_camera.lr_roll_cam(roll_cam, offsets);}
+        if(lev_cam){g_camera.ud_move_cam(lev_cam, offsets);}
 
         // Poll and swap.
         glfwPollEvents();

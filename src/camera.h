@@ -11,10 +11,14 @@ public:
     void lm_rotate_cam(double screenX, double screenY);
     void rm_zoom_cam(double screendY);
     void mm_trans_cam(double screenX, double screenY);
-    void ws_walk_cam(int direction);
-    void ad_strafe_cam(int direction);
-    void lr_roll_cam(int direction);
-    void ud_move_cam(int direction);
+    void ws_walk_cam(int direction,
+                     const std::vector<glm::vec3>& cubes);
+    void ad_strafe_cam(int direction,
+                       const std::vector<glm::vec3>& cubes);
+    void lr_roll_cam(int direction,
+                     const std::vector<glm::vec3>& cubes);
+    void ud_move_cam(int direction,
+                     const std::vector<glm::vec3>& cubes);
     void update_physics(double timestep, const Chunk& C, const std::vector<glm::vec3>& cubes);
     bool physics_mode = true;
     void jump();
